@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#177789">
+  <title>EUROPA 110</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <main id="app">
+
+    <section id="loginView" class="login-view">
+      <div class="login-card">
+        <div class="brand-mark">E</div>
+        <p class="eyebrow">R.•. L.•.</p>
+        <h1>EUROPA 110</h1>
+        <p class="login-copy">Área privada</p>
+
+        <form id="loginForm">
+          <label>
+            Usuario
+            <input
+              id="username"
+              name="username"
+              autocomplete="username"
+              required
+            >
+          </label>
+
+          <label>
+            Contraseña
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            >
+          </label>
+
+          <button type="submit">Entrar</button>
+
+          <p id="loginError" class="error" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+
+    <section id="privateView" class="private-view hidden">
+
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">R.•. L.•.</p>
+          <strong>EUROPA 110</strong>
+        </div>
+
+        <button id="logoutButton" class="ghost-button">
+          Salir
+        </button>
+      </header>
+
+
+      <div class="page-shell">
+
+        <section class="welcome">
+          <p id="userMeta" class="eyebrow"></p>
+          <h2 id="welcomeName">Bienvenido</h2>
+        </section>
+
+
+        <nav class="main-tabs" aria-label="Secciones principales">
+          <button class="tab active" data-view="agenda">Agenda</button>
+          <button class="tab" data-view="planchas">Planchas</button>
+          <button class="tab" data-view="documentos">Documentos</button>
+        </nav>
+
+
+        <section id="agendaPanel" class="content-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Próximas citas</p>
+              <h3>Agenda</h3>
+            </div>
+          </div>
+
+          <div id="agendaList" class="card-list"></div>
+        </section>
+
+
+        <section id="planchasPanel" class="content-panel hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Biblioteca</p>
+              <h3>Planchas</h3>
+            </div>
+          </div>
+
+          <input
+            id="paperSearch"
+            class="search-input"
+            type="search"
+            placeholder="Buscar por título, autor o tema"
+          >
+
+          <div id="planchasList" class="card-list"></div>
+        </section>
+
+
+        <section id="documentosPanel" class="content-panel hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Archivo</p>
+              <h3>Documentos</h3>
+            </div>
+          </div>
+
+          <div id="documentosList" class="card-list"></div>
+        </section>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
