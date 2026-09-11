@@ -1,0 +1,244 @@
+R.•. L.•. EUROPA 110 · App privada
+
+Versión inicial de trabajo (v0.1). Esta base sirve para revisar la arquitectura antes de seguir programando.
+
+Qué hace ya esta versión
+
+• Pantalla de acceso con usuario + contraseña.
+• Los usuarios se leen desde la pestaña Usuarios del Google Sheet.
+• La contraseña se compara con la columna Contraseña del Sheet.
+• El usuario debe tener Activo = Sí.
+• Control de acceso por grado:
+  • Aprendiz → ve contenido Aprendiz.
+  • Compañero → ve Aprendiz + Compañero.
+  • Maestro → ve Aprendiz + Compañero + Maestro.
+• El grado y el rol son conceptos separados.
+• La app carga desde Google Sheets:
+  • Agenda
+  • Planchas
+  • Documentos
+• La interfaz está preparada para GitHub Pages y pensada primero para móvil.
+• Las sesiones duran 6 horas y se guardan temporalmente en Apps Script.
+• La contraseña no se envía de vuelta al navegador ni aparece en GitHub.
+
+Arquitectura
+
+```text
+GitHub Pages
+     │
+     │ HTTPS
+     ▼
+Google Apps Script
+     │
+     ▼
+Google Sheets
+```
+
+Google Sheets es la base de datos maestra.
+
+Apps Script:
+
+• comprueba el usuario y contraseña;
+• crea una sesión temporal;
+• lee el grado y rol;
+• filtra los datos antes de enviarlos a la app.
+
+GitHub contiene únicamente la interfaz.
+
+Google Sheet actual
+
+Archivo:
+
+R.•. L.•. EUROPA 110 · Fuente App
+
+ID configurado en Code.gs:
+
+1HSVNUcExd0_RrU5zKd83vaIVaNno7glatV6JyjBWKCY
+
+Pestaña Usuarios
+
+La primera fila debe contener estos encabezados:
+
+```text
+Usuario | Nombre mostrado | Grado | Rol | Activo | Contraseña | Último acceso | Observaciones
+```
+
+Ejemplo:
+
+```text
+alba | Alba | Maestro | Administrador | Sí | clave123 | | 
+```
+
+> La contraseña está en texto normal porque esta versión parte de ese criterio de administración.  
+> Aunque el Sheet sea privado, no conviene reutilizar esas contraseñas en otros servicios.
+
+Pestañas de contenido
+
+Agenda
+
+Debe contener una columna llamada:
+
+Grado mínimo
+
+Planchas
+
+Debe contener una columna llamada:
+
+Grado mínimo
+
+Documentos
+
+Debe contener una columna llamada:
+
+Grado mínimo
+
+Valores admitidos:
+
+```text
+Aprendiz
+Compañero
+Maestro
+```
+
+La comparación se hace por nivel:
+
+```text
+Aprendiz  = 1
+Compañero = 2
+Maestro   = 3
+```
+
+Ejemplo: una plancha marcada como Compañero la reciben Compañeros y Maestros, pero no Aprendices.
+
+Roles actuales
+
+El código ya devuelve el rol del usuario, pero todavía no permite editar desde la web.
+
+Valores previstos:
+
+• Miembro
+• Editor
+• Secretaría
+• Administrador
+
+En esta versión, el rol queda preparado para la siguiente fase.
+
+Archivos
+
+```text
+/
+├── README.md
+├── apps-script/
+│   └── Code.gs
+└── web/
+    ├── index.html
+    ├── styles.css
+    ├── config.js
+    └── app.js
+```
+
+1. Configurar Apps Script
+
+1. Abre el Google Sheet.
+2. Ve a Extensiones → Apps Script.
+3. Sustituye el contenido de Code.gs por el archivo apps-script/Code.gs.
+4. Guarda.
+5. Pulsa Implementar → Nueva implementación.
+6. Tipo: Aplicación web.
+7. Ejecutar como: tú.
+8. Acceso: el necesario para que GitHub Pages pueda llamar al endpoint.
+9. Copia la URL terminada en /exec.
+
+2. Configurar la web
+
+Abre:
+
+web/config.js
+
+y sustituye:
+
+```js
+const APPS_SCRIPT_URL = 'PEGA_AQUI_LA_URL_DEL_WEB_APP';
+```
+
+por la URL real de Apps Script.
+
+3. Publicar en GitHub Pages
+
+Sube el contenido de la carpeta web/ al repositorio.
+
+La portada será index.html.
+
+API actual
+
+Login
+
+POST a Apps Script:
+
+```json
+{
+  "action": "login",
+  "usuario": "alba",
+  "password": "clave123"
+}
+```
+
+Respuesta:
+
+```json
+{
+  "ok": true,
+  "token": "...",
+  "usuario": {
+    "usuario": "alba",
+    "nombre": "Alba",
+    "grado": "Maestro",
+    "rol": "Administrador"
+  }
+}
+```
+
+Leer contenido
+
+GET:
+
+```text
+?action=agenda&token=TOKEN
+?action=planchas&token=TOKEN
+?action=documentos&token=TOKEN
+```
+
+Apps Script filtra los datos antes de enviarlos.
+
+Logout
+
+POST:
+
+```json
+{
+  "action": "logout",
+  "token": "TOKEN"
+}
+```
+
+Decisiones deliberadamente pendientes
+
+Antes de seguir, conviene cerrar:
+
+1. Qué puede modificar cada rol.
+2. Si un usuario puede cambiar su contraseña desde la app.
+3. Cómo se dan de alta y de baja usuarios.
+4. Qué campos exactos mostramos en cada ficha de plancha.
+5. Si los documentos se abren mediante enlaces de Drive o si queremos una visualización integrada.
+6. Si la Agenda será solo consulta o permitirá altas/ediciones desde la app.
+7. Si habrá avisos/notificaciones.
+8. Si la app tendrá buscador global.
+9. Qué aspecto final tendrá la cabecera y el logotipo.
+10. Si añadiremos instalación PWA completa.
+
+Nota de seguridad
+
+Esta versión no confía en el grado que diga el navegador.
+El navegador solo manda el token de sesión. Apps Script recupera el usuario real de esa sesión y aplica el filtro allí.
+
+Esto es importante: esconder una tarjeta con CSS no es control de acceso. El contenido reservado nunca debe llegar al navegador de quien no tenga grado suficiente.
