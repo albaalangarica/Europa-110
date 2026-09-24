@@ -131,7 +131,7 @@ function doPost(e) {
 }
 
 function handleLogin(data) {
-  const usuarioInput = normalizeText(data.usuario || data.user || '');
+  const usuarioInput = normalizeText(data.username || data.usuario || data.user || '');
   const passwordInput = String(data.password || data.contrasena || '').trim();
 
   if (!usuarioInput || !passwordInput) {
