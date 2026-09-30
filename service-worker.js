@@ -1,12 +1,23 @@
-const CACHE_NAME = 'europa110-v1';
+// Cambia la versión al publicar cambios para que los móviles descarguen la nueva.
+const CACHE_NAME = 'europa110-v2';
+
 const APP_SHELL = [
   './',
   './index.html',
+  './styles.css',
+  './config.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './config.js',
-  './app.js'
+  './js/main.js',
+  './js/api.js',
+  './js/utils.js',
+  './js/state.js',
+  './js/nav.js',
+  './js/agenda.js',
+  './js/library.js',
+  './js/panels.js',
+  './js/guest.js'
 ];
 
 self.addEventListener('install', event => {
@@ -27,13 +38,14 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+// Primero la red; si no hay conexión, la copia guardada.
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // No cachear las llamadas al backend de Apps Script.
-  if (url.hostname.includes('script.google.com')) return;
+  // Nunca se guardan las respuestas de Apps Script (datos privados).
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     fetch(event.request)
