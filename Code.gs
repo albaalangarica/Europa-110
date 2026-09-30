@@ -8,7 +8,7 @@ const SHEETS = {
   ASISTENCIA: 'Asistencia',
   INVITADOS: 'Invitados',
   FORMACION: 'Formación',
-  TRONCO: 'Tronco',
+  TRONCO: 'Tronco de la Viuda',
   OTRAS_LOGIAS: 'Otras logias'
 };
 
@@ -661,8 +661,9 @@ const TRONCO_HEADERS = [
   'Fecha tenida',
   'Tenida',
   'Importe',
-  'Observaciones',
   'Registrado por',
+  'Fecha de registro',
+  'Observaciones',
   'Actualizado'
 ];
 
@@ -726,6 +727,7 @@ function handleTronco(data) {
 
   if (!rowNumber) {
     rowNumber = sheet.getLastRow() + 1;
+    rowValues['Fecha de registro'] = rowValues.Actualizado;
   }
 
   Object.keys(rowValues).forEach(name => {
