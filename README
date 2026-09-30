@@ -1,244 +1,139 @@
-R.•. L.•. EUROPA 110 · App privada
+R.·. L.·. EUROPA 110 · App privada
+====================================
 
-Versión inicial de trabajo (v0.1). Esta base sirve para revisar la arquitectura antes de seguir programando.
+Aplicación web de la logia: agenda de tenidas, planchas, documentos internos,
+paneles de cargo y una zona pública para invitados.
 
-Qué hace ya esta versión
+Todo el contenido sale del Google Sheet "R.·. L.·. EUROPA 110 · Fuente App".
+Para cambiar fechas, nombres, cargos o convocatorias se edita el Sheet,
+no el código.
 
-• Pantalla de acceso con usuario + contraseña.
-• Los usuarios se leen desde la pestaña Usuarios del Google Sheet.
-• La contraseña se compara con la columna Contraseña del Sheet.
-• El usuario debe tener Activo = Sí.
-• Control de acceso por grado:
-  • Aprendiz → ve contenido Aprendiz.
-  • Compañero → ve Aprendiz + Compañero.
-  • Maestro → ve Aprendiz + Compañero + Maestro.
-• El grado y el rol son conceptos separados.
-• La app carga desde Google Sheets:
-  • Agenda
-  • Planchas
-  • Documentos
-• La interfaz está preparada para GitHub Pages y pensada primero para móvil.
-• Las sesiones duran 6 horas y se guardan temporalmente en Apps Script.
-• La contraseña no se envía de vuelta al navegador ni aparece en GitHub.
 
 Arquitectura
+------------
 
-```text
-GitHub Pages
-     │
-     │ HTTPS
-     ▼
-Google Apps Script
-     │
-     ▼
-Google Sheets
-```
+    GitHub Pages  (esta carpeta: solo la interfaz)
+         │  HTTPS
+         ▼
+    Google Apps Script  (Code.gs: comprueba usuario, cargo y grado)
+         │
+         ▼
+    Google Sheets  (los datos)
 
-Google Sheets es la base de datos maestra.
+La web nunca decide qué puede ver alguien: el servidor filtra los datos
+antes de enviarlos. Ocultar un botón en la web no es control de acceso.
 
-Apps Script:
-
-• comprueba el usuario y contraseña;
-• crea una sesión temporal;
-• lee el grado y rol;
-• filtra los datos antes de enviarlos a la app.
-
-GitHub contiene únicamente la interfaz.
-
-Google Sheet actual
-
-Archivo:
-
-R.•. L.•. EUROPA 110 · Fuente App
-
-ID configurado en Code.gs:
-
-1HSVNUcExd0_RrU5zKd83vaIVaNno7glatV6JyjBWKCY
-
-Pestaña Usuarios
-
-La primera fila debe contener estos encabezados:
-
-```text
-Usuario | Nombre mostrado | Grado | Rol | Activo | Contraseña | Último acceso | Observaciones
-```
-
-Ejemplo:
-
-```text
-alba | Alba | Maestro | Administrador | Sí | clave123 | | 
-```
-
-> La contraseña está en texto normal porque esta versión parte de ese criterio de administración.  
-> Aunque el Sheet sea privado, no conviene reutilizar esas contraseñas en otros servicios.
-
-Pestañas de contenido
-
-Agenda
-
-Debe contener una columna llamada:
-
-Grado mínimo
-
-Planchas
-
-Debe contener una columna llamada:
-
-Grado mínimo
-
-Documentos
-
-Debe contener una columna llamada:
-
-Grado mínimo
-
-Valores admitidos:
-
-```text
-Aprendiz
-Compañero
-Maestro
-```
-
-La comparación se hace por nivel:
-
-```text
-Aprendiz  = 1
-Compañero = 2
-Maestro   = 3
-```
-
-Ejemplo: una plancha marcada como Compañero la reciben Compañeros y Maestros, pero no Aprendices.
-
-Roles actuales
-
-El código ya devuelve el rol del usuario, pero todavía no permite editar desde la web.
-
-Valores previstos:
-
-• Miembro
-• Editor
-• Secretaría
-• Administrador
-
-En esta versión, el rol queda preparado para la siguiente fase.
 
 Archivos
+--------
 
-```text
-/
-├── README.md
-├── apps-script/
-│   └── Code.gs
-└── web/
-    ├── index.html
-    ├── styles.css
-    ├── config.js
-    └── app.js
-```
+    index.html          estructura de la página (sin código)
+    styles.css          estilos
+    config.js           URL de Apps Script
+    js/main.js          arranque, acceso, sesión y navegación
+    js/api.js           llamadas a Apps Script
+    js/nav.js           cambio de pantalla y de pestaña
+    js/state.js         datos de la sesión en memoria
+    js/utils.js         fechas, importes, HTML seguro
+    js/agenda.js        agenda, ficha de tenida, asistencia, tronco, otras logias
+    js/library.js       planchas e Interno
+    js/panels.js        Secretaría, Venerable y formación
+    js/guest.js         zona de invitados
+    service-worker.js   funcionamiento sin conexión
+    Code.gs             servidor (se copia en Apps Script)
+    Preparar.gs         preparación de las hojas (se ejecuta una vez)
 
-1. Configurar Apps Script
 
-1. Abre el Google Sheet.
-2. Ve a Extensiones → Apps Script.
-3. Sustituye el contenido de Code.gs por el archivo apps-script/Code.gs.
-4. Guarda.
-5. Pulsa Implementar → Nueva implementación.
-6. Tipo: Aplicación web.
-7. Ejecutar como: tú.
-8. Acceso: el necesario para que GitHub Pages pueda llamar al endpoint.
-9. Copia la URL terminada en /exec.
+El Google Sheet
+---------------
 
-2. Configurar la web
+Usuarios
+    Usuario | Nombre mostrado | Grado | Rol | Activo | Contraseña |
+    Último acceso | Observaciones | Cargos
 
-Abre:
+    · Grado: Aprendiz, Compañero o Maestro.
+    · Activo: Sí para poder entrar.
+    · El desplegable de acceso muestra la columna Usuario de quien esté activo
+      (nunca el nombre completo, porque esa lista es pública).
+    · Cargos: uno o varios separados por comas. Deciden qué paneles se ven:
 
-web/config.js
+        Secretario                    → panel de Secretaría
+        Venerable Maestro             → panel del Venerable
+        Primer Vigilante              → publica formación de Compañeros
+        Segundo Vigilante             → publica formación de Aprendices
+        Apoyo formación Compañeros    → igual que Primer Vigilante, sin serlo
+        Apoyo formación Aprendices    → igual que Segundo Vigilante, sin serlo
+        Tronco de la Viuda / Tesorero / Hospitalario → registra el Tronco
 
-y sustituye:
+      El Rol "Administrador" también puede registrar el Tronco.
+      Compañeros y Aprendices ven las formaciones de su grado.
 
-```js
-const APPS_SCRIPT_URL = 'PEGA_AQUI_LA_URL_DEL_WEB_APP';
-```
+Agenda (una fila por tenida)
+    ID | Fecha | Hora | Título | Tipo | Lugar | Descripción | Grado mínimo |
+    Visible para | Nº tenida | Libro de presencia | Orden del día |
+    Convocatoria | Convocatoria invitados | Público
 
-por la URL real de Apps Script.
+    · ID: obligatorio y único (por ejemplo EVT-6026-004).
+    · Orden del día: un punto por línea (Alt+Intro para saltar de línea).
+    · Convocatoria: enlace que ven los miembros.
+    · Público: Sí para que salga en el calendario de invitados.
+      Los invitados solo ven fecha, título, tipo, hora y lugar,
+      y el enlace de "Convocatoria invitados" si lo hay.
 
-3. Publicar en GitHub Pages
+Planchas
+    Título | Autor | Fecha | Grado | Tema | Resumen | Enlace / archivo |
+    Grado mínimo | Tenida ID | Pública
 
-Sube el contenido de la carpeta web/ al repositorio.
+    · Tenida ID: la tenida en la que se lee. La plancha aparece en la ficha
+      de esa tenida. Sin Tenida ID, sale como "sin leer" en Secretaría.
+    · Pública: Sí para que la vean los invitados.
 
-La portada será index.html.
+Documentos
+    Título | Categoría | Fecha | Descripción | Enlace / archivo | Grado mínimo
 
-API actual
+Otras logias (convocatorias recibidas)
+    ID | Fecha | Hora | Presencia | Título | Logia | Lugar | Grado | Tipo |
+    Información | Observaciones | Grado mínimo
 
-Login
+    Salen en la agenda, dentro del desplegable de cada mes.
+    "Apuntarme" solo queda anotado en el móvil de cada uno: no avisa a nadie.
 
-POST a Apps Script:
+Pestañas que rellena la app (no hace falta tocarlas)
+    Asistencia · Invitados · Formación · Tronco
 
-```json
-{
-  "action": "login",
-  "usuario": "alba",
-  "password": "clave123"
-}
-```
+"Grado mínimo" admite Aprendiz, Compañero o Maestro. Si la columna existe,
+una fila sin valor válido no la ve nadie.
+"Visible para" admite todos, o una lista de usuarios, grados o cargos
+separados por comas.
 
-Respuesta:
 
-```json
-{
-  "ok": true,
-  "token": "...",
-  "usuario": {
-    "usuario": "alba",
-    "nombre": "Alba",
-    "grado": "Maestro",
-    "rol": "Administrador"
-  }
-}
-```
+Instalar o actualizar el servidor
+---------------------------------
 
-Leer contenido
+1. Abre el Sheet → Extensiones → Apps Script.
+2. Sustituye el contenido de Code.gs por el de este repositorio.
+3. La primera vez: crea un archivo nuevo (+ → Secuencia de comandos),
+   llámalo Preparar y pega Preparar.gs. Selecciona la función
+   prepararHojas y pulsa Ejecutar. Revisa el registro: dice qué ha hecho
+   y si queda algo a mano. Se puede repetir sin riesgo; nunca borra datos.
+4. Implementar → Gestionar implementaciones → lápiz (editar) →
+   Versión: Nueva versión → Implementar.
+   Así la URL no cambia. Si se crea una implementación nueva, la URL
+   cambia y hay que ponerla en config.js.
 
-GET:
 
-```text
-?action=agenda&token=TOKEN
-?action=planchas&token=TOKEN
-?action=documentos&token=TOKEN
-```
+Publicar la web
+---------------
 
-Apps Script filtra los datos antes de enviarlos.
+Los archivos de esta carpeta se publican con GitHub Pages.
+Al publicar cambios, sube el número de CACHE_NAME en service-worker.js
+para que los móviles descarguen la versión nueva.
 
-Logout
 
-POST:
+Seguridad
+---------
 
-```json
-{
-  "action": "logout",
-  "token": "TOKEN"
-}
-```
-
-Decisiones deliberadamente pendientes
-
-Antes de seguir, conviene cerrar:
-
-1. Qué puede modificar cada rol.
-2. Si un usuario puede cambiar su contraseña desde la app.
-3. Cómo se dan de alta y de baja usuarios.
-4. Qué campos exactos mostramos en cada ficha de plancha.
-5. Si los documentos se abren mediante enlaces de Drive o si queremos una visualización integrada.
-6. Si la Agenda será solo consulta o permitirá altas/ediciones desde la app.
-7. Si habrá avisos/notificaciones.
-8. Si la app tendrá buscador global.
-9. Qué aspecto final tendrá la cabecera y el logotipo.
-10. Si añadiremos instalación PWA completa.
-
-Nota de seguridad
-
-Esta versión no confía en el grado que diga el navegador.
-El navegador solo manda el token de sesión. Apps Script recupera el usuario real de esa sesión y aplica el filtro allí.
-
-Esto es importante: esconder una tarjeta con CSS no es control de acceso. El contenido reservado nunca debe llegar al navegador de quien no tenga grado suficiente.
+· Las contraseñas están en texto normal en el Sheet: el Sheet debe ser
+  privado y no conviene reutilizar esas contraseñas en otros servicios.
+· Las sesiones duran 6 horas desde el último uso y se guardan en Apps Script.
+· Al cerrar sesión se borra del dispositivo todo lo de esa persona.
