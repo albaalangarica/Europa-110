@@ -6,7 +6,8 @@ const SHEETS = {
   PLANCHAS: 'Planchas',
   DOCUMENTOS: 'Documentos',
   ASISTENCIA: 'Asistencia',
-  INVITADOS: 'Invitados'
+  INVITADOS: 'Invitados',
+  FORMACION: 'Formación'
 };
 
 const SESSION_PREFIX = 'europa110_session_';
@@ -75,6 +76,15 @@ function doGet(e) {
       });
     }
 
+
+    if (action === 'formation' || action === 'formacion') {
+      const session = requireSession(token);
+      return jsonResponse({
+        ok: true,
+        data: getFormationForUser(session.user)
+      });
+    }
+
     if (action === 'attendance') {
       const session = requireSession(token);
       return jsonResponse({
@@ -111,6 +121,11 @@ function doPost(e) {
 
     if (action === 'attendance' || action === 'asistencia' || action === 'save_attendance') {
       return handleAttendance(data);
+    }
+
+
+    if (action === 'formation' || action === 'formacion') {
+      return handleFormation(data);
     }
 
     if (action === 'guest_signup') {
@@ -224,6 +239,167 @@ function handleAttendance(data) {
     ok: true,
     attendance: result
   });
+}
+
+
+
+
+function ensureFormationSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(SHEETS.FORMACION);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.FORMACION);
+    sheet.getRange(1, 1, 1, 9).setValues([[
+      'ID',
+      'Nivel',
+      'Título',
+      'Fecha',
+      'Nota',
+      'Enlaces',
+      'Publicado por',
+      'Fecha publicación',
+      'Activo'
+    ]]);
+    sheet.setFrozenRows(1);
+  }
+
+  return sheet;
+}
+
+function formationRoleForUser(user) {
+  const username = normalizeText(user && (user.Usuario || user.usuario || user.username || ''));
+  const displayName = normalizeText(user && (user['Nombre mostrado'] || user.nombre || user.name || ''));
+  const role = normalizeText(user && (user.Rol || user.rol || user.role || ''));
+
+  if (
+    username === 'jesus' ||
+    displayName.indexOf('jesus del campo') !== -1 ||
+    role.indexOf('primer vigilante') !== -1
+  ) {
+    return { canPublish: true, nivel: 'Compañero' };
+  }
+
+  if (
+    username === 'alvaro' ||
+    displayName === 'alvaro' ||
+    role.indexOf('segundo vigilante') !== -1
+  ) {
+    return { canPublish: true, nivel: 'Aprendiz' };
+  }
+
+  if (username === 'alba' || username === 'eric' || displayName === 'alba' || displayName === 'eric') {
+    return { canPublish: false, nivel: 'Compañero' };
+  }
+
+  if (username === 'raquel' || displayName === 'raquel') {
+    return { canPublish: false, nivel: 'Aprendiz' };
+  }
+
+  return { canPublish: false, nivel: '' };
+}
+
+function handleFormation(data) {
+  const token = String(data.token || '').trim();
+  const session = requireSession(token);
+  const access = formationRoleForUser(session.user);
+
+  if (!access.canPublish) {
+    throw new Error('No tienes permiso para publicar formaciones.');
+  }
+
+  const titulo = String(data.titulo || data.title || '').trim();
+  const fecha = String(data.fecha || data.date || '').trim();
+  const nota = String(data.nota || data.note || '').trim();
+  let enlaces = data.enlaces || data.links || [];
+
+  if (!titulo) {
+    throw new Error('El título es obligatorio.');
+  }
+
+  if (!Array.isArray(enlaces)) {
+    enlaces = String(enlaces || '')
+      .split(/\r?\n|,\s*(?=https?:\/\/)/)
+      .map(function(x) { return x.trim(); })
+      .filter(Boolean);
+  }
+
+  enlaces = enlaces
+    .map(function(x) { return String(x || '').trim(); })
+    .filter(Boolean);
+
+  const sheet = ensureFormationSheet();
+  const id = 'FORM-' + Utilities.getUuid();
+  const now = new Date();
+  const publishedBy = session.user['Nombre mostrado'] || session.user.Usuario || '';
+
+  sheet.appendRow([
+    id,
+    access.nivel,
+    titulo,
+    fecha,
+    nota,
+    JSON.stringify(enlaces),
+    publishedBy,
+    now,
+    'Sí'
+  ]);
+
+  return jsonResponse({
+    ok: true,
+    formation: {
+      ID: id,
+      Nivel: access.nivel,
+      'Título': titulo,
+      Fecha: fecha,
+      Nota: nota,
+      Enlaces: enlaces,
+      'Publicado por': publishedBy,
+      'Fecha publicación': now.toISOString(),
+      Activo: 'Sí'
+    }
+  });
+}
+
+function getFormationForUser(user) {
+  const access = formationRoleForUser(user);
+
+  if (!access.nivel) {
+    return [];
+  }
+
+  ensureFormationSheet();
+  const rows = sheetToObjects(SHEETS.FORMACION);
+
+  return rows
+    .filter(function(row) {
+      const active = !String(row.Activo || '').trim() || normalizeText(row.Activo) === 'si';
+      return active && normalizeText(row.Nivel) === normalizeText(access.nivel);
+    })
+    .map(function(row) {
+      let links = [];
+      try {
+        links = JSON.parse(String(row.Enlaces || '[]'));
+        if (!Array.isArray(links)) links = [];
+      } catch (_) {
+        links = String(row.Enlaces || '')
+          .split(/\r?\n/)
+          .map(function(x) { return x.trim(); })
+          .filter(Boolean);
+      }
+
+      return {
+        ID: row.ID || '',
+        Nivel: row.Nivel || '',
+        'Título': row['Título'] || '',
+        Fecha: row.Fecha || '',
+        Nota: row.Nota || '',
+        Enlaces: links,
+        'Publicado por': row['Publicado por'] || '',
+        'Fecha publicación': row['Fecha publicación'] || '',
+        Activo: row.Activo || ''
+      };
+    });
 }
 
 

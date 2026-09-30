@@ -381,10 +381,13 @@ function setupTabs() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => t.classList.remove('active'));
+      document
+        .querySelectorAll('.role-nav-item')
+        .forEach(item => item.classList.remove('active'));
       tab.classList.add('active');
 
       document
-        .querySelectorAll('.content-panel')
+        .querySelectorAll('.content-panel, .view-panel')
         .forEach(panel => panel.classList.add('hidden'));
 
       const view = tab.dataset.view;
@@ -399,8 +402,15 @@ function setupTabs() {
 
 
 function showLogin() {
-  loginView.classList.remove('hidden');
+  // Si se ha entrado con el enlace de invitados, no tapamos esa vista con el login.
+  const guestMode = location.hash === '#invitado';
+  loginView.classList.toggle('hidden', guestMode);
   privateView.classList.add('hidden');
+
+  // La agenda cacheada es de la persona que tenía la sesión: no debe verla la siguiente.
+  try {
+    localStorage.removeItem('europa110_agenda_html');
+  } catch (_) {}
 
   document.getElementById('password').value = '';
   loginError.textContent = '';
@@ -409,6 +419,7 @@ function showLogin() {
 
 function showPrivate() {
   loginView.classList.add('hidden');
+  document.getElementById('guestView')?.classList.add('hidden');
   privateView.classList.remove('hidden');
 }
 
