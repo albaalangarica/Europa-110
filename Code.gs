@@ -1,5 +1,13 @@
 const SPREADSHEET_ID = '1HSVNUcExd0_RrU5zKd83vaIVaNno7glatV6JyjBWKCY';
 
+// Memoria de la petición en curso: Apps Script la vacía al terminar.
+const REQUEST_MEMO = { ss: null, rows: {} };
+
+function getSpreadsheet() {
+  if (!REQUEST_MEMO.ss) REQUEST_MEMO.ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return REQUEST_MEMO.ss;
+}
+
 const SHEETS = {
   USUARIOS: 'Usuarios',
   AGENDA: 'Agenda',
@@ -22,6 +30,12 @@ const GRADE_RANK = {
 };
 
 const FORMATION_LEVELS = ['Compañero', 'Aprendiz'];
+
+// Lo leído de cada pestaña se guarda un rato para no releer el Sheet en cada
+// petición. Los cambios hechos desde la app lo borran al momento; los hechos a
+// mano en el Sheet tardan como mucho este tiempo en verse.
+const SHEET_CACHE_SECONDS = 60;
+const SHEET_CACHE_PREFIX = 'europa110_rows_v1_';
 
 
 /* =========================================================
@@ -393,8 +407,7 @@ function getTenidaData(item, user) {
 }
 
 function getOtherLodgeEvents(user) {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEETS.OTRAS_LOGIAS);
-  if (!sheet) return [];
+  if (!sheetExists(SHEETS.OTRAS_LOGIAS)) return [];
 
   return sheetToObjects(SHEETS.OTRAS_LOGIAS)
     .filter(row => isVisibleForUser(row, user))
@@ -509,6 +522,7 @@ function upsertAttendance(data) {
       sheet.getRange(r + 1, indexes.respuesta + 1).setValue(data.respuesta);
       sheet.getRange(r + 1, indexes.fechaRespuesta + 1).setValue(now);
       sheet.getRange(r + 1, indexes.actualizado + 1).setValue(now);
+      invalidateSheet(SHEETS.ASISTENCIA);
 
       return {
         tenidaId: targetTenida,
@@ -518,6 +532,8 @@ function upsertAttendance(data) {
       };
     }
   }
+
+  invalidateSheet(SHEETS.ASISTENCIA);
 
   sheet.appendRow([
     targetTenida,
@@ -538,8 +554,7 @@ function upsertAttendance(data) {
 }
 
 function getAttendanceRows() {
-  ensureAttendanceSheet();
-  return sheetToObjects(SHEETS.ASISTENCIA);
+  return sheetExists(SHEETS.ASISTENCIA) ? sheetToObjects(SHEETS.ASISTENCIA) : [];
 }
 
 function getAttendanceForUser(usuario) {
@@ -672,9 +687,7 @@ function ensureTroncoSheet() {
 }
 
 function getTroncoRows() {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEETS.TRONCO);
-  if (!sheet) return [];
-  return sheetToObjects(SHEETS.TRONCO);
+  return sheetExists(SHEETS.TRONCO) ? sheetToObjects(SHEETS.TRONCO) : [];
 }
 
 function findTronco(tenidaId) {
@@ -736,6 +749,8 @@ function handleTronco(data) {
     if (name === 'Observaciones' && !observaciones) return;
     sheet.getRange(rowNumber, col(name) + 1).setValue(rowValues[name]);
   });
+
+  invalidateSheet(SHEETS.TRONCO);
 
   return jsonResponse({
     ok: true,
@@ -822,6 +837,8 @@ function handleFormation(data) {
     'Sí'
   ]);
 
+  invalidateSheet(SHEETS.FORMACION);
+
   return jsonResponse({
     ok: true,
     formation: {
@@ -845,7 +862,10 @@ function getFormationForUser(user) {
     return [];
   }
 
-  ensureFormationSheet();
+  if (!sheetExists(SHEETS.FORMACION)) {
+    return [];
+  }
+
   const rows = sheetToObjects(SHEETS.FORMACION);
 
   return rows
@@ -1037,6 +1057,8 @@ function saveGuestSignup(data) {
     ''
   ]);
 
+  invalidateSheet(SHEETS.INVITADOS);
+
   return {
     tenidaId: tenidaId,
     nombre: data.nombre,
@@ -1099,7 +1121,7 @@ function gradeRank(value) {
    ========================================================= */
 
 function getSheet(sheetName) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
@@ -1110,6 +1132,44 @@ function getSheet(sheetName) {
 }
 
 function sheetToObjects(sheetName) {
+  if (REQUEST_MEMO.rows[sheetName]) {
+    return REQUEST_MEMO.rows[sheetName];
+  }
+
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(SHEET_CACHE_PREFIX + sheetName);
+  if (cached) {
+    try {
+      REQUEST_MEMO.rows[sheetName] = JSON.parse(cached);
+      return REQUEST_MEMO.rows[sheetName];
+    } catch (_) {
+      // Caché dañada: se vuelve a leer la hoja.
+    }
+  }
+
+  const rows = readSheetObjects(sheetName);
+  REQUEST_MEMO.rows[sheetName] = rows;
+
+  const json = JSON.stringify(rows);
+  // CacheService admite hasta 100 KB por valor.
+  if (json.length < 90000) {
+    cache.put(SHEET_CACHE_PREFIX + sheetName, json, SHEET_CACHE_SECONDS);
+  }
+
+  return rows;
+}
+
+// Se llama después de escribir en una pestaña desde la app.
+function invalidateSheet(sheetName) {
+  delete REQUEST_MEMO.rows[sheetName];
+  CacheService.getScriptCache().remove(SHEET_CACHE_PREFIX + sheetName);
+}
+
+function sheetExists(sheetName) {
+  return !!getSpreadsheet().getSheetByName(sheetName);
+}
+
+function readSheetObjects(sheetName) {
   const sheet = getSheet(sheetName);
   const values = sheet.getDataRange().getDisplayValues();
 
@@ -1132,7 +1192,7 @@ function sheetToObjects(sheetName) {
 
 // Crea la pestaña si no existe y pone los encabezados si está vacía.
 function ensureSheetWithHeaders(sheetName, headers) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
@@ -1145,6 +1205,7 @@ function ensureSheetWithHeaders(sheetName, headers) {
   if (existing.every(v => String(v || '').trim() === '')) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
+    invalidateSheet(sheetName);
   }
 
   return sheet;
@@ -1160,6 +1221,7 @@ function ensureColumns(sheet, names) {
     if (headers.indexOf(name) === -1) {
       headers.push(name);
       sheet.getRange(1, headers.length).setValue(name);
+      invalidateSheet(sheet.getName());
     }
   });
 
@@ -1187,6 +1249,7 @@ function updateLastAccess(usuario) {
   for (let r = 1; r < values.length; r++) {
     if (normalizeText(values[r][userCol]) === target) {
       sheet.getRange(r + 1, accessCol + 1).setValue(new Date());
+      invalidateSheet(SHEETS.USUARIOS);
       return;
     }
   }
