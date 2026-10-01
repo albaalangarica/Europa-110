@@ -2,10 +2,10 @@
 
 import { apiGet, apiPost } from './api.js';
 import { state, permissions } from './state.js';
-import { attendanceSummaryBody } from './agenda.js';
+import { attendanceSummaryBody, renderAgenda } from './agenda.js';
 import {
   $, escapeHtml, safeLink, driveViewUrl, normalize, emptyCard, errorCard, loadingCards,
-  parseDate, startOfToday, shortDate, formatMoney
+  parseDate, startOfToday, shortDate, formatMoney, parseAmount
 } from './utils.js';
 
 
@@ -77,6 +77,147 @@ export async function loadManagement() {
   }
 }
 
+// Tarjetas desplegadas de "Marcar asistencia", para mantenerlas abiertas al repintar.
+const openAttendanceLists = new Set();
+
+function renderTenidaCard(row, troncoRows) {
+  const p = permissions();
+  const id = String(row.tenidaId || '');
+  const personas = row.personas || [];
+  const tronco = troncoRows.find(t => String(t['Tenida ID'] || '').trim() === id);
+  const amount = tronco ? parseAmount(tronco.Importe) : NaN;
+
+  return `
+    <article class="management-item" data-tenida="${escapeHtml(id)}">
+      <h4>${escapeHtml(row.titulo || 'Tenida')}</h4>
+      <p>${escapeHtml(shortDate(row.fecha))}</p>
+      ${attendanceSummaryBody(row)}
+
+      ${p.asistencia && personas.length ? `
+        <details class="admin-attendance" data-tenida="${escapeHtml(id)}" ${openAttendanceLists.has(id) ? 'open' : ''}>
+          <summary>Marcar asistencia</summary>
+          <div class="admin-attendance-list">
+            ${personas.map(person => `
+              <div class="admin-attendance-row">
+                <span>${escapeHtml(person.nombre)}</span>
+                <div class="admin-attendance-actions">
+                  ${['Sí', 'No'].map(answer => `
+                    <button type="button"
+                      class="admin-attendance-button ${answer === 'Sí' ? 'yes' : 'no'}${person.respuesta === answer ? ' selected' : ''}"
+                      data-action="admin-attendance"
+                      data-usuario="${escapeHtml(person.usuario)}"
+                      data-answer="${answer}"
+                      aria-pressed="${person.respuesta === answer}"
+                      aria-label="${escapeHtml(person.nombre)}: ${answer === 'Sí' ? 'asiste' : 'no asiste'}">${answer}</button>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </details>
+      ` : ''}
+
+      ${p.tronco ? `
+        <div class="tronco-entry-box">
+          <label>Tronco de la Viuda${Number.isFinite(amount) ? ` · registrado ${escapeHtml(formatMoney(amount))}` : ''}</label>
+          <div class="tronco-entry-row">
+            <input class="tronco-input" type="number" inputmode="decimal" min="0" step="0.01"
+              placeholder="0,00" value="${Number.isFinite(amount) ? amount : ''}" aria-label="Importe del Tronco de la Viuda">
+            <span>€</span>
+          </div>
+          <button class="attendance-button primary" type="button" data-action="panel-save-tronco">Guardar importe</button>
+        </div>
+      ` : ''}
+
+      <p class="attendance-status" data-role="card-status" aria-live="polite"></p>
+    </article>
+  `;
+}
+
+// Recalcula sí / no / pendientes a partir de la lista de personas.
+function refreshSummary(row) {
+  const names = answer => row.personas.filter(p => p.respuesta === answer).map(p => p.nombre);
+  row.si = names('Sí');
+  row.no = names('No');
+  row.pendientes = names('');
+}
+
+function setCardStatus(id, message) {
+  document.querySelectorAll(`.management-item[data-tenida="${CSS.escape(id)}"] [data-role="card-status"]`)
+    .forEach(el => { el.textContent = message; });
+}
+
+async function saveAdminAttendance(button) {
+  const card = button.closest('.management-item');
+  const id = card.dataset.tenida;
+  const usuario = button.dataset.usuario;
+  const answer = button.dataset.answer;
+
+  card.querySelectorAll('[data-action="admin-attendance"]').forEach(b => { b.disabled = true; });
+  setCardStatus(id, 'Guardando…');
+
+  try {
+    await apiPost('attendance_admin', { tenidaId: id, usuario, respuesta: answer });
+
+    const row = (state.management?.attendance || []).find(r => String(r.tenidaId) === id);
+    const person = row?.personas.find(p => normalize(p.usuario) === normalize(usuario));
+    if (person) {
+      person.respuesta = answer;
+      refreshSummary(row);
+    }
+
+    // La ficha de esa tenida se volverá a pedir con los datos nuevos.
+    delete state.tenidaFetchedAt[id];
+
+    // Si se ha marcado a sí mismo, también cambia su agenda.
+    if (normalize(usuario) === normalize(state.user?.usuario)) {
+      const item = state.agenda.find(entry => String(entry.ID || '').trim() === id);
+      if (item) {
+        item['Mi asistencia'] = answer;
+        renderAgenda();
+      }
+    }
+
+    renderManagement();
+    setCardStatus(id, `${person?.nombre || usuario}: ${answer === 'Sí' ? 'asiste' : 'no asiste'}.`);
+  } catch (error) {
+    card.querySelectorAll('[data-action="admin-attendance"]').forEach(b => { b.disabled = false; });
+    setCardStatus(id, error.message || 'No se pudo guardar.');
+  }
+}
+
+async function savePanelTronco(button) {
+  const card = button.closest('.management-item');
+  const id = card.dataset.tenida;
+  const importe = String(card.querySelector('.tronco-input')?.value || '').trim().replace(',', '.');
+
+  if (!importe || !Number.isFinite(Number(importe)) || Number(importe) < 0) {
+    setCardStatus(id, 'Introduce un importe válido.');
+    return;
+  }
+
+  button.disabled = true;
+  setCardStatus(id, 'Guardando…');
+
+  try {
+    const result = await apiPost('tronco', { tenidaId: id, importe });
+    const saved = result.tronco || { 'Tenida ID': id, Importe: Number(importe) };
+
+    const rows = state.management.tronco || (state.management.tronco = []);
+    const index = rows.findIndex(r => String(r['Tenida ID'] || '').trim() === id);
+    if (index === -1) rows.push(saved);
+    else rows[index] = { ...rows[index], ...saved };
+
+    state.tenidaData[id] = { ...(state.tenidaData[id] || {}), tronco: saved };
+
+    renderManagement();
+    setCardStatus(id, 'Importe guardado.');
+  } catch (error) {
+    button.disabled = false;
+    setCardStatus(id, error.message || 'No se pudo guardar el importe.');
+  }
+}
+
 function renderManagement() {
   const data = state.management;
   const papers = data.unreadPapers || [];
@@ -106,13 +247,9 @@ function renderManagement() {
     <section class="management-section">
       <h3>Confirmaciones a las tenidas</h3>
       <div class="management-list">
-        ${attendance.length ? attendance.map(row => `
-          <article class="management-item">
-            <h4>${escapeHtml(row.titulo || 'Tenida')}</h4>
-            <p>${escapeHtml(shortDate(row.fecha))}</p>
-            ${attendanceSummaryBody(row)}
-          </article>
-        `).join('') : '<div class="empty-card">No hay tenidas disponibles.</div>'}
+        ${attendance.length
+          ? attendance.map(row => renderTenidaCard(row, tronco)).join('')
+          : '<div class="empty-card">No hay tenidas disponibles.</div>'}
       </div>
     </section>
 
@@ -258,6 +395,12 @@ export function resetPanels() {
 
 export function bindPanels() {
   document.addEventListener('click', event => {
+    const adminAttendance = event.target.closest('[data-action="admin-attendance"]');
+    if (adminAttendance) saveAdminAttendance(adminAttendance);
+
+    const panelTronco = event.target.closest('[data-action="panel-save-tronco"]');
+    if (panelTronco) savePanelTronco(panelTronco);
+
     const toggle = event.target.closest('[data-action="toggle-formation-form"]');
     if (toggle) toggleFormationForm(toggle);
 
@@ -266,6 +409,14 @@ export function bindPanels() {
       addLink.closest('form').querySelector('.formation-link-list').insertAdjacentHTML('beforeend', LINK_FIELD);
     }
   });
+
+  // Recordar qué listas de asistencia están desplegadas.
+  document.addEventListener('toggle', event => {
+    const details = event.target;
+    if (!details.matches?.('.admin-attendance')) return;
+    if (details.open) openAttendanceLists.add(details.dataset.tenida);
+    else openAttendanceLists.delete(details.dataset.tenida);
+  }, true);
 
   document.querySelectorAll('[data-formation-form]').forEach(form => {
     form.addEventListener('submit', event => {

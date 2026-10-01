@@ -169,6 +169,10 @@ function doPost(e) {
       return handleAttendance(data);
     }
 
+    if (action === 'attendance_admin') {
+      return handleAttendanceAdmin(data);
+    }
+
     if (action === 'formation' || action === 'formacion') {
       return handleFormation(data);
     }
@@ -350,9 +354,12 @@ function permissionsFor(user) {
     secretaria: secretaria,
     venerable: venerable,
     gestion: secretaria || venerable,
+    // Secretaría puede marcar la asistencia de cualquiera.
+    asistencia: secretaria,
     primerVigilante: primerVigilante,
     segundoVigilante: segundoVigilante,
     tronco: normalizeText(user && user.Rol) === 'administrador' ||
+      secretaria ||
       hasCargo(user, 'tronco') ||
       hasCargo(user, 'tesorer') ||
       hasCargo(user, 'hospitalari'),
@@ -476,6 +483,48 @@ function handleAttendance(data) {
   });
 }
 
+// Secretaría marca la asistencia de otra persona, sin el límite de 10 días.
+function handleAttendanceAdmin(data) {
+  const session = requireSession(String(data.token || '').trim());
+
+  if (!permissionsFor(session.user).asistencia) {
+    throw new Error('No tienes permiso para marcar la asistencia de otros.');
+  }
+
+  const tenidaId = String(data.tenidaId || '').trim();
+  const respuesta = normalizeAttendanceAnswer(data.respuesta);
+  const agendaItem = findAgendaById(tenidaId);
+
+  if (!agendaItem) {
+    throw new Error('La tenida no existe.');
+  }
+
+  if (!respuesta) {
+    throw new Error('Respuesta de asistencia no válida.');
+  }
+
+  const target = sheetToObjects(SHEETS.USUARIOS).find(row =>
+    normalizeText(row.Usuario) === normalizeText(data.usuario)
+  );
+
+  if (!target) {
+    throw new Error('Esa persona no está en la hoja Usuarios.');
+  }
+
+  const result = upsertAttendance({
+    tenidaId: tenidaId,
+    fechaTenida: agendaItem.Fecha || '',
+    usuario: target.Usuario || '',
+    nombre: target['Nombre mostrado'] || target.Usuario || '',
+    respuesta: respuesta
+  });
+
+  return jsonResponse({
+    ok: true,
+    attendance: result
+  });
+}
+
 function ensureAttendanceSheet() {
   return ensureSheetWithHeaders(SHEETS.ASISTENCIA, [
     'Tenida ID',
@@ -587,6 +636,7 @@ function buildAttendanceSummaries(agendaItems) {
     const si = [];
     const no = [];
     const answered = {};
+    const personas = [];
 
     answers
       .filter(row => String(row['Tenida ID'] || '').trim() === id)
@@ -595,11 +645,21 @@ function buildAttendanceSummaries(agendaItems) {
         answered[normalizeText(row.Usuario)] = true;
         if (row.Respuesta === 'Sí') si.push(name);
         else if (row.Respuesta === 'No') no.push(name);
+        personas.push({ usuario: row.Usuario || '', nombre: name, respuesta: row.Respuesta || '' });
       });
 
-    const pendientes = users
-      .filter(user => !answered[normalizeText(user.Usuario)] && isVisibleForUser(item, user))
-      .map(user => user['Nombre mostrado'] || user.Usuario);
+    const pendingUsers = users
+      .filter(user => !answered[normalizeText(user.Usuario)] && isVisibleForUser(item, user));
+
+    pendingUsers.forEach(user => {
+      personas.push({
+        usuario: user.Usuario || '',
+        nombre: user['Nombre mostrado'] || user.Usuario || '',
+        respuesta: ''
+      });
+    });
+
+    personas.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
     return {
       tenidaId: id,
@@ -607,7 +667,8 @@ function buildAttendanceSummaries(agendaItems) {
       fecha: item.Fecha || '',
       si: si,
       no: no,
-      pendientes: pendientes
+      pendientes: pendingUsers.map(user => user['Nombre mostrado'] || user.Usuario),
+      personas: personas
     };
   });
 }
