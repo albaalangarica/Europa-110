@@ -1,5 +1,5 @@
 // Cambia la versión al publicar cambios para que los móviles descarguen la nueva.
-const CACHE_NAME = 'europa110-v2';
+const CACHE_NAME = 'europa110-v3';
 
 const APP_SHELL = [
   './',

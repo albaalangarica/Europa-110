@@ -57,7 +57,8 @@ Usuarios
       (nunca el nombre completo, porque esa lista es pública).
     · Cargos: uno o varios separados por comas. Deciden qué paneles se ven:
 
-        Secretario                    → panel de Secretaría
+        Secretario                    → panel de Secretaría; marca la asistencia
+                                        de cualquiera y registra el Tronco
         Venerable Maestro             → panel del Venerable
         Primer Vigilante              → publica formación de Compañeros
         Segundo Vigilante             → publica formación de Aprendices
@@ -99,7 +100,7 @@ Otras logias (convocatorias recibidas)
     "Apuntarme" solo queda anotado en el móvil de cada uno: no avisa a nadie.
 
 Pestañas que rellena la app (no hace falta tocarlas)
-    Asistencia · Invitados · Formación · Tronco
+    Asistencia · Invitados · Formación · Tronco de la Viuda
 
 "Grado mínimo" admite Aprendiz, Compañero o Maestro. Si la columna existe,
 una fila sin valor válido no la ve nadie.

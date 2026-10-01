@@ -1,5 +1,13 @@
 const SPREADSHEET_ID = '1HSVNUcExd0_RrU5zKd83vaIVaNno7glatV6JyjBWKCY';
 
+// Memoria de la petición en curso: Apps Script la vacía al terminar.
+const REQUEST_MEMO = { ss: null, rows: {} };
+
+function getSpreadsheet() {
+  if (!REQUEST_MEMO.ss) REQUEST_MEMO.ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return REQUEST_MEMO.ss;
+}
+
 const SHEETS = {
   USUARIOS: 'Usuarios',
   AGENDA: 'Agenda',
@@ -8,7 +16,7 @@ const SHEETS = {
   ASISTENCIA: 'Asistencia',
   INVITADOS: 'Invitados',
   FORMACION: 'Formación',
-  TRONCO: 'Tronco',
+  TRONCO: 'Tronco de la Viuda',
   OTRAS_LOGIAS: 'Otras logias'
 };
 
@@ -22,6 +30,12 @@ const GRADE_RANK = {
 };
 
 const FORMATION_LEVELS = ['Compañero', 'Aprendiz'];
+
+// Lo leído de cada pestaña se guarda un rato para no releer el Sheet en cada
+// petición. Los cambios hechos desde la app lo borran al momento; los hechos a
+// mano en el Sheet tardan como mucho este tiempo en verse.
+const SHEET_CACHE_SECONDS = 60;
+const SHEET_CACHE_PREFIX = 'europa110_rows_v1_';
 
 
 /* =========================================================
@@ -153,6 +167,10 @@ function doPost(e) {
 
     if (action === 'attendance' || action === 'asistencia' || action === 'save_attendance') {
       return handleAttendance(data);
+    }
+
+    if (action === 'attendance_admin') {
+      return handleAttendanceAdmin(data);
     }
 
     if (action === 'formation' || action === 'formacion') {
@@ -336,9 +354,12 @@ function permissionsFor(user) {
     secretaria: secretaria,
     venerable: venerable,
     gestion: secretaria || venerable,
+    // Secretaría puede marcar la asistencia de cualquiera.
+    asistencia: secretaria,
     primerVigilante: primerVigilante,
     segundoVigilante: segundoVigilante,
     tronco: normalizeText(user && user.Rol) === 'administrador' ||
+      secretaria ||
       hasCargo(user, 'tronco') ||
       hasCargo(user, 'tesorer') ||
       hasCargo(user, 'hospitalari'),
@@ -393,8 +414,7 @@ function getTenidaData(item, user) {
 }
 
 function getOtherLodgeEvents(user) {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEETS.OTRAS_LOGIAS);
-  if (!sheet) return [];
+  if (!sheetExists(SHEETS.OTRAS_LOGIAS)) return [];
 
   return sheetToObjects(SHEETS.OTRAS_LOGIAS)
     .filter(row => isVisibleForUser(row, user))
@@ -463,6 +483,48 @@ function handleAttendance(data) {
   });
 }
 
+// Secretaría marca la asistencia de otra persona, sin el límite de 10 días.
+function handleAttendanceAdmin(data) {
+  const session = requireSession(String(data.token || '').trim());
+
+  if (!permissionsFor(session.user).asistencia) {
+    throw new Error('No tienes permiso para marcar la asistencia de otros.');
+  }
+
+  const tenidaId = String(data.tenidaId || '').trim();
+  const respuesta = normalizeAttendanceAnswer(data.respuesta);
+  const agendaItem = findAgendaById(tenidaId);
+
+  if (!agendaItem) {
+    throw new Error('La tenida no existe.');
+  }
+
+  if (!respuesta) {
+    throw new Error('Respuesta de asistencia no válida.');
+  }
+
+  const target = sheetToObjects(SHEETS.USUARIOS).find(row =>
+    normalizeText(row.Usuario) === normalizeText(data.usuario)
+  );
+
+  if (!target) {
+    throw new Error('Esa persona no está en la hoja Usuarios.');
+  }
+
+  const result = upsertAttendance({
+    tenidaId: tenidaId,
+    fechaTenida: agendaItem.Fecha || '',
+    usuario: target.Usuario || '',
+    nombre: target['Nombre mostrado'] || target.Usuario || '',
+    respuesta: respuesta
+  });
+
+  return jsonResponse({
+    ok: true,
+    attendance: result
+  });
+}
+
 function ensureAttendanceSheet() {
   return ensureSheetWithHeaders(SHEETS.ASISTENCIA, [
     'Tenida ID',
@@ -509,6 +571,7 @@ function upsertAttendance(data) {
       sheet.getRange(r + 1, indexes.respuesta + 1).setValue(data.respuesta);
       sheet.getRange(r + 1, indexes.fechaRespuesta + 1).setValue(now);
       sheet.getRange(r + 1, indexes.actualizado + 1).setValue(now);
+      invalidateSheet(SHEETS.ASISTENCIA);
 
       return {
         tenidaId: targetTenida,
@@ -518,6 +581,8 @@ function upsertAttendance(data) {
       };
     }
   }
+
+  invalidateSheet(SHEETS.ASISTENCIA);
 
   sheet.appendRow([
     targetTenida,
@@ -538,8 +603,7 @@ function upsertAttendance(data) {
 }
 
 function getAttendanceRows() {
-  ensureAttendanceSheet();
-  return sheetToObjects(SHEETS.ASISTENCIA);
+  return sheetExists(SHEETS.ASISTENCIA) ? sheetToObjects(SHEETS.ASISTENCIA) : [];
 }
 
 function getAttendanceForUser(usuario) {
@@ -572,6 +636,7 @@ function buildAttendanceSummaries(agendaItems) {
     const si = [];
     const no = [];
     const answered = {};
+    const personas = [];
 
     answers
       .filter(row => String(row['Tenida ID'] || '').trim() === id)
@@ -580,11 +645,21 @@ function buildAttendanceSummaries(agendaItems) {
         answered[normalizeText(row.Usuario)] = true;
         if (row.Respuesta === 'Sí') si.push(name);
         else if (row.Respuesta === 'No') no.push(name);
+        personas.push({ usuario: row.Usuario || '', nombre: name, respuesta: row.Respuesta || '' });
       });
 
-    const pendientes = users
-      .filter(user => !answered[normalizeText(user.Usuario)] && isVisibleForUser(item, user))
-      .map(user => user['Nombre mostrado'] || user.Usuario);
+    const pendingUsers = users
+      .filter(user => !answered[normalizeText(user.Usuario)] && isVisibleForUser(item, user));
+
+    pendingUsers.forEach(user => {
+      personas.push({
+        usuario: user.Usuario || '',
+        nombre: user['Nombre mostrado'] || user.Usuario || '',
+        respuesta: ''
+      });
+    });
+
+    personas.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
     return {
       tenidaId: id,
@@ -592,7 +667,8 @@ function buildAttendanceSummaries(agendaItems) {
       fecha: item.Fecha || '',
       si: si,
       no: no,
-      pendientes: pendientes
+      pendientes: pendingUsers.map(user => user['Nombre mostrado'] || user.Usuario),
+      personas: personas
     };
   });
 }
@@ -661,8 +737,9 @@ const TRONCO_HEADERS = [
   'Fecha tenida',
   'Tenida',
   'Importe',
-  'Observaciones',
   'Registrado por',
+  'Fecha de registro',
+  'Observaciones',
   'Actualizado'
 ];
 
@@ -671,9 +748,7 @@ function ensureTroncoSheet() {
 }
 
 function getTroncoRows() {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEETS.TRONCO);
-  if (!sheet) return [];
-  return sheetToObjects(SHEETS.TRONCO);
+  return sheetExists(SHEETS.TRONCO) ? sheetToObjects(SHEETS.TRONCO) : [];
 }
 
 function findTronco(tenidaId) {
@@ -726,6 +801,7 @@ function handleTronco(data) {
 
   if (!rowNumber) {
     rowNumber = sheet.getLastRow() + 1;
+    rowValues['Fecha de registro'] = rowValues.Actualizado;
   }
 
   Object.keys(rowValues).forEach(name => {
@@ -734,6 +810,8 @@ function handleTronco(data) {
     if (name === 'Observaciones' && !observaciones) return;
     sheet.getRange(rowNumber, col(name) + 1).setValue(rowValues[name]);
   });
+
+  invalidateSheet(SHEETS.TRONCO);
 
   return jsonResponse({
     ok: true,
@@ -820,6 +898,8 @@ function handleFormation(data) {
     'Sí'
   ]);
 
+  invalidateSheet(SHEETS.FORMACION);
+
   return jsonResponse({
     ok: true,
     formation: {
@@ -843,7 +923,10 @@ function getFormationForUser(user) {
     return [];
   }
 
-  ensureFormationSheet();
+  if (!sheetExists(SHEETS.FORMACION)) {
+    return [];
+  }
+
   const rows = sheetToObjects(SHEETS.FORMACION);
 
   return rows
@@ -1035,6 +1118,8 @@ function saveGuestSignup(data) {
     ''
   ]);
 
+  invalidateSheet(SHEETS.INVITADOS);
+
   return {
     tenidaId: tenidaId,
     nombre: data.nombre,
@@ -1097,7 +1182,7 @@ function gradeRank(value) {
    ========================================================= */
 
 function getSheet(sheetName) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
@@ -1108,6 +1193,44 @@ function getSheet(sheetName) {
 }
 
 function sheetToObjects(sheetName) {
+  if (REQUEST_MEMO.rows[sheetName]) {
+    return REQUEST_MEMO.rows[sheetName];
+  }
+
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(SHEET_CACHE_PREFIX + sheetName);
+  if (cached) {
+    try {
+      REQUEST_MEMO.rows[sheetName] = JSON.parse(cached);
+      return REQUEST_MEMO.rows[sheetName];
+    } catch (_) {
+      // Caché dañada: se vuelve a leer la hoja.
+    }
+  }
+
+  const rows = readSheetObjects(sheetName);
+  REQUEST_MEMO.rows[sheetName] = rows;
+
+  const json = JSON.stringify(rows);
+  // CacheService admite hasta 100 KB por valor.
+  if (json.length < 90000) {
+    cache.put(SHEET_CACHE_PREFIX + sheetName, json, SHEET_CACHE_SECONDS);
+  }
+
+  return rows;
+}
+
+// Se llama después de escribir en una pestaña desde la app.
+function invalidateSheet(sheetName) {
+  delete REQUEST_MEMO.rows[sheetName];
+  CacheService.getScriptCache().remove(SHEET_CACHE_PREFIX + sheetName);
+}
+
+function sheetExists(sheetName) {
+  return !!getSpreadsheet().getSheetByName(sheetName);
+}
+
+function readSheetObjects(sheetName) {
   const sheet = getSheet(sheetName);
   const values = sheet.getDataRange().getDisplayValues();
 
@@ -1130,7 +1253,7 @@ function sheetToObjects(sheetName) {
 
 // Crea la pestaña si no existe y pone los encabezados si está vacía.
 function ensureSheetWithHeaders(sheetName, headers) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
@@ -1143,6 +1266,7 @@ function ensureSheetWithHeaders(sheetName, headers) {
   if (existing.every(v => String(v || '').trim() === '')) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
+    invalidateSheet(sheetName);
   }
 
   return sheet;
@@ -1158,6 +1282,7 @@ function ensureColumns(sheet, names) {
     if (headers.indexOf(name) === -1) {
       headers.push(name);
       sheet.getRange(1, headers.length).setValue(name);
+      invalidateSheet(sheet.getName());
     }
   });
 
@@ -1185,6 +1310,7 @@ function updateLastAccess(usuario) {
   for (let r = 1; r < values.length; r++) {
     if (normalizeText(values[r][userCol]) === target) {
       sheet.getRange(r + 1, accessCol + 1).setValue(new Date());
+      invalidateSheet(SHEETS.USUARIOS);
       return;
     }
   }

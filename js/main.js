@@ -58,6 +58,18 @@ async function loadUserList() {
 }
 
 
+// La lista de nombres solo hace falta en la pantalla de acceso.
+let userListRequested = false;
+
+function showLogin() {
+  showScreen('login');
+  if (!userListRequested) {
+    userListRequested = true;
+    loadUserList();
+  }
+}
+
+
 /* SESIÓN */
 
 async function login(event) {
@@ -122,12 +134,12 @@ function logout() {
   if (token) apiPost('logout').catch(() => {});
 
   clearSession();
-  showScreen('login');
+  showLogin();
 }
 
 function sessionExpired(event) {
   clearSession();
-  showScreen('login');
+  showLogin();
   $('loginError').textContent = event.detail || 'La sesión ha caducado. Vuelve a entrar.';
 }
 
@@ -159,7 +171,7 @@ function bindShell() {
   $('guestExitButton').addEventListener('click', () => {
     history.replaceState(null, '', location.pathname + location.search);
     if (getToken() && state.user) enterPrivate(state.user);
-    else showScreen('login');
+    else showLogin();
   });
 
   document.querySelectorAll('.bottom-nav [data-view]').forEach(button => {
@@ -203,13 +215,11 @@ async function start() {
     enterGuest();
   }
 
-  loadUserList();
-
   const token = getToken();
   const cachedUser = storage.getJSON(USER_CACHE_KEY, null);
 
   if (!token) {
-    if (location.hash !== GUEST_HASH) showScreen('login');
+    if (location.hash !== GUEST_HASH) showLogin();
     return;
   }
 
@@ -236,7 +246,7 @@ async function start() {
     // Sin conexión: si había datos guardados, seguimos con ellos.
     if (!cachedUser && location.hash !== GUEST_HASH) {
       clearToken();
-      showScreen('login');
+      showLogin();
     }
   }
 }

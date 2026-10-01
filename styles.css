@@ -2159,3 +2159,80 @@ a.paper-detail-card .paper-open-action {
   font-size: 13px;
   color: #687272;
 }
+
+/* SECRETARÍA: MARCAR ASISTENCIA */
+
+.admin-attendance {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.admin-attendance summary {
+  cursor: pointer;
+  color: var(--brand);
+  font-size: 11.5px;
+  font-weight: 750;
+}
+
+.admin-attendance-list {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.admin-attendance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.admin-attendance-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-attendance-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-attendance-button {
+  min-width: 44px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.admin-attendance-button.yes.selected {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 11%, var(--surface));
+  color: var(--brand);
+}
+
+.admin-attendance-button.no.selected {
+  border-color: #C79AA0;
+  background: #F4E9EA;
+  color: #7A2F38;
+}
+
+.admin-attendance-button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.management-item [data-role="card-status"]:empty {
+  display: none;
+}

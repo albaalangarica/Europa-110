@@ -108,7 +108,7 @@ function prepararHojas() {
   ensureFormationSheet();
   ensureAttendanceSheet();
   ensureInvitadosSheet();
-  log.push('Pestañas Tronco, Formación, Asistencia e Invitados comprobadas.');
+  log.push('Pestañas Tronco de la Viuda, Formación, Asistencia e Invitados comprobadas.');
 
   Logger.log(log.join('\n'));
   return log;
