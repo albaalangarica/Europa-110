@@ -1,0 +1,182 @@
+@import 'tailwindcss';
+
+/*
+ * Europa 110 · sistema visual.
+ * Minimalismo contemporáneo con sobriedad de club privado: turquesa profundo,
+ * fondo marfil frío, tarjetas blancas con bordes discretos y sin sombras fuertes.
+ * Todos los colores, tipografía, radios y espaciados salen de estos tokens.
+ */
+@theme {
+  /* Tipografía: primero la del sistema (SF Pro en Apple), luego Inter. */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', Inter, 'Segoe UI', Roboto, ui-sans-serif, system-ui, sans-serif;
+
+  /* Color */
+  --color-primary: #0e6974;
+  --color-primary-hover: #0b5761;
+  --color-deep: #123c44;
+  --color-canvas: #f6f7f5;
+  --color-surface: #ffffff;
+  --color-subtle: #eef1ef;
+  --color-selected: #e5f0f0;
+  --color-ink: #192629;
+  --color-muted: #647274;
+  --color-faint: #8a9597;
+  --color-line: #e3e7e5;
+  --color-line-strong: #d3d9d7;
+  --color-danger: #a33a3a;
+  --color-danger-soft: #f8eceb;
+  --color-warning: #8a5a12;
+  --color-warning-soft: #f7f0e3;
+
+  /* Radios */
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  /* Espaciado propio */
+  --spacing-gutter: 20px;
+  --spacing-tap: 44px;
+  --spacing-header: 56px;
+  --spacing-nav: 64px;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade: fade 220ms ease-out both;
+  --animate-rise: rise 280ms var(--ease-soft) both;
+  --animate-sheet: sheet 300ms var(--ease-soft) both;
+
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes sheet {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+    background: var(--color-canvas);
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  ::selection {
+    background: var(--color-selected);
+  }
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /* Áreas seguras de iPhone */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pb-nav {
+    padding-bottom: calc(var(--spacing-nav) + env(safe-area-inset-bottom) + 24px);
+  }
+  /* En pantallas anchas no hay barra inferior: la navegación va arriba. */
+  @media (min-width: 768px) {
+    .pb-nav {
+      padding-bottom: 56px;
+    }
+  }
+
+  .card {
+    min-width: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+  .card-link {
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+  .card-link:hover {
+    border-color: var(--color-line-strong);
+  }
+  .card-link:active {
+    background: var(--color-subtle);
+  }
+
+  .eyebrow {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .control {
+    min-height: var(--spacing-tap);
+    width: 100%;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-surface);
+    padding: 10px 14px;
+    color: var(--color-ink);
+  }
+  .control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-selected);
+  }
+  textarea.control {
+    min-height: 96px;
+    resize: vertical;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-subtle) 0%, #f7f8f7 50%, var(--color-subtle) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  /* Desplegables de invitaciones y actos de cada mes */
+  details > summary {
+    list-style: none;
+  }
+  details > summary::-webkit-details-marker {
+    display: none;
+  }
+  details[open] .rotate-open {
+    transform: rotate(90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
