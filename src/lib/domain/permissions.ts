@@ -51,6 +51,8 @@ export interface Permisos {
   formacion: { publicar: FormationLevel[]; ver: FormationLevel[] }
   // Edita tenidas, planchas, documentos, convocatorias y usuarios (antes se hacía en el Sheet).
   administracion: boolean
+  // Aprueba lo que se deja en el Saco de proposiciones: Secretaría, Venerable y Administración.
+  aprobarProposiciones: boolean
 }
 
 export function permissionsFor(user: UserLike): Permisos {
@@ -81,6 +83,7 @@ export function permissionsFor(user: UserLike): Permisos {
     tronco: administrador || secretaria || hasCargo(user, 'tronco') || hasCargo(user, 'tesorer') || hasCargo(user, 'hospitalari'),
     formacion: { publicar, ver },
     administracion: administrador,
+    aprobarProposiciones: secretaria || venerable || administrador,
   }
 }
 

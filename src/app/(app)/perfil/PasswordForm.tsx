@@ -15,8 +15,8 @@ export function PasswordForm() {
   return (
     <form ref={form} action={action} className="grid gap-3">
       <Field label="Contraseña actual" name="current" autoComplete="current-password" />
-      <Field label="Nueva contraseña" name="password" autoComplete="new-password" minLength={8} />
-      <Field label="Repite la nueva contraseña" name="confirm" autoComplete="new-password" minLength={8} />
+      <Field label="Nueva contraseña" name="password" autoComplete="new-password" />
+      <Field label="Repite la nueva contraseña" name="confirm" autoComplete="new-password" />
       {state ? <Notice tone={state.ok ? 'success' : 'danger'}>{state.message}</Notice> : null}
       <Button type="submit" variant="secondary" disabled={pending}>
         {pending ? 'Guardando…' : 'Cambiar contraseña'}

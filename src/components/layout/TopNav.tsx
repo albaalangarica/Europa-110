@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import logo from '../../../public/icons/icon-192.png'
 import { NAV_ICONS, isActive } from './BottomNav'
 import type { NavItem } from './nav'
+import { AvisosBell } from '@/components/avisos/AvisosBell'
 
 /** En pantallas anchas, la navegación va integrada en una barra superior horizontal. */
 export function TopNav({ items, initial, name }: { items: NavItem[]; initial: string; name: string }) {
@@ -42,6 +43,7 @@ export function TopNav({ items, initial, name }: { items: NavItem[]; initial: st
             })}
           </ul>
         </nav>
+        <AvisosBell />
         <Link href="/perfil" aria-label={`Perfil de ${name}`} className="flex shrink-0 items-center gap-2.5 rounded-full py-1 pl-3 pr-1 hover:bg-subtle">
           <span className="text-[13.5px] font-medium text-ink">{name}</span>
           <span className="grid size-9 place-items-center rounded-full bg-deep text-[14px] font-semibold text-white">{initial}</span>

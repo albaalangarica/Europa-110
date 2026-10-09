@@ -1,3 +1,4 @@
+import { AvisosProvider } from '@/components/avisos/AvisosProvider'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { navItems } from '@/components/layout/nav'
 import { TopNav } from '@/components/layout/TopNav'
@@ -8,10 +9,10 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   const items = navItems(member.permisos)
   const name = member.nombre || member.usuario
   return (
-    <>
+    <AvisosProvider>
       <TopNav items={items} initial={name.charAt(0).toUpperCase()} name={name} />
       {children}
       <BottomNav items={items} />
-    </>
+    </AvisosProvider>
   )
 }

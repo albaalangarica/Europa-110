@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, KeyRound } from 'lucide-react'
 import { getCurrentMember } from '@/lib/auth/session'
 import logo from '../../../public/icons/icon-192.png'
+import { AvisosBell } from '@/components/avisos/AvisosBell'
 
 /**
  * Cabecera compacta: logotipo original, marca y título de la sección; a la derecha, el perfil.
@@ -42,6 +43,7 @@ export async function AppHeader({
           </p>
           <h1 className="truncate text-[17px] font-semibold tracking-[-0.01em] text-ink md:text-[28px] md:tracking-[-0.02em]">{title}</h1>
         </div>
+        <AvisosBell className="-mr-1 md:hidden" />
         <Link
           href="/perfil"
           aria-label="Perfil"

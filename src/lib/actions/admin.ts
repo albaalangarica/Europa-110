@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/supabase/admin'
+import { avisoDeFormacion, avisosDeTenida } from '@/lib/data/avisos'
 import { ENTITIES, isEntityKey, type FieldDef } from '@/lib/admin/entities'
 import { toIsoDate } from '@/lib/domain/dates'
 import { parseGrade } from '@/lib/domain/permissions'
@@ -76,6 +77,9 @@ export async function saveEntity(_prev: ActionResult | null, form: FormData): Pr
   }
   if (kind !== 'formaciones') row.updated_at = new Date().toISOString()
 
+  // Para avisar si se añade el orden del día o la convocatoria.
+  const before = kind === 'tenidas' && existingId ? (await db().from('tenidas').select('*').eq('id', existingId).maybeSingle()).data : null
+
   try {
     const query = existingId
       ? db().from(def.table).update(row).eq('id', existingId)
@@ -85,6 +89,15 @@ export async function saveEntity(_prev: ActionResult | null, form: FormData): Pr
   } catch (error) {
     console.error('[admin guardar]', kind, error)
     return UNEXPECTED
+  }
+
+  const member = await actionMember()
+  if (member && kind === 'tenidas') {
+    const { data: after } = await db().from('tenidas').select('*').eq('id', id).maybeSingle()
+    if (after) await avisosDeTenida(existingId ? (before ?? {}) : null, after, member.id)
+  }
+  if (member && kind === 'formaciones' && !existingId && row.activo !== false) {
+    await avisoDeFormacion({ id, nivel: row.nivel as 'Compañero' | 'Aprendiz', titulo: String(row.titulo), fecha: (row.fecha as string) || null, hora: String(row.hora ?? '') }, member.id)
   }
 
   revalidatePath('/', 'layout')
@@ -126,7 +139,6 @@ export async function saveMember(_prev: ActionResult | null, form: FormData): Pr
 
   if (!usuario) return failure('El usuario es obligatorio.')
   if (!grado) return failure('Elige el grado.')
-  if (password && password.length < 3) return failure('La contraseña provisional debe tener al menos 3 caracteres.')
   if (!id && !password) return failure('Pon una contraseña para la cuenta nueva.')
 
   const row = {
@@ -151,12 +163,18 @@ export async function saveMember(_prev: ActionResult | null, form: FormData): Pr
       const { error } = await db().from('miembros').update(password ? { ...row, debe_cambiar_clave: true } : row).eq('id', id)
       if (error) throw error
       if (password) {
-        const { error: pwError } = await db().auth.admin.updateUserById(id, { password })
+        const { error: pwError } = await db().rpc('cambiar_clave', { miembro: id, clave: password })
         if (pwError) throw pwError
       }
     } else {
-      const { data, error } = await db().auth.admin.createUser({ email: internalEmail(), password, email_confirm: true })
+      // La cuenta se crea con una clave aleatoria y después se pone la elegida (sin mínimo de longitud).
+      const { data, error } = await db().auth.admin.createUser({ email: internalEmail(), password: randomBytes(18).toString('base64url'), email_confirm: true })
       if (error || !data.user) throw error ?? new Error('Sin usuario')
+      const { error: pwError } = await db().rpc('cambiar_clave', { miembro: data.user.id, clave: password })
+      if (pwError) {
+        await db().auth.admin.deleteUser(data.user.id)
+        throw pwError
+      }
       const { error: insertError } = await db().from('miembros').insert({ ...row, id: data.user.id, debe_cambiar_clave: true })
       if (insertError) {
         await db().auth.admin.deleteUser(data.user.id)

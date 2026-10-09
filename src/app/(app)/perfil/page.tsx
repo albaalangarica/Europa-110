@@ -57,7 +57,7 @@ export default async function PerfilPage() {
           <div id="contrasena" className={member.debe_cambiar_clave ? 'card scroll-mt-24 border-primary p-4' : 'card scroll-mt-24 p-4'}>
             {member.debe_cambiar_clave ? (
               <p className="mb-4 rounded-control bg-selected px-3.5 py-2.5 text-[13.5px] font-medium text-deep">
-                Estás usando la contraseña provisional. Pon una tuya: la actual es la que te dieron, y la nueva, de al menos 8 caracteres.
+                Estás usando la contraseña provisional. Pon una tuya: en «Contraseña actual» escribe la que te dieron.
               </p>
             ) : null}
             <PasswordForm />
