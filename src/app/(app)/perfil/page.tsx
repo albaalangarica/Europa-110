@@ -53,8 +53,13 @@ export default async function PerfilPage() {
           </Section>
         ) : null}
 
-        <Section title="Contraseña" className="mt-6">
-          <div className="card p-4">
+        <Section title="Contraseña" className="mt-6 scroll-mt-20">
+          <div id="contrasena" className={member.debe_cambiar_clave ? 'card scroll-mt-24 border-primary p-4' : 'card scroll-mt-24 p-4'}>
+            {member.debe_cambiar_clave ? (
+              <p className="mb-4 rounded-control bg-selected px-3.5 py-2.5 text-[13.5px] font-medium text-deep">
+                Estás usando la contraseña provisional. Pon una tuya: la actual es la que te dieron, y la nueva, de al menos 8 caracteres.
+              </p>
+            ) : null}
             <PasswordForm />
           </div>
         </Section>

@@ -100,6 +100,12 @@
   .pb-nav {
     padding-bottom: calc(var(--spacing-nav) + env(safe-area-inset-bottom) + 24px);
   }
+  /* En pantallas anchas no hay barra inferior: la navegación va arriba. */
+  @media (min-width: 768px) {
+    .pb-nav {
+      padding-bottom: 56px;
+    }
+  }
 
   .card {
     min-width: 0;

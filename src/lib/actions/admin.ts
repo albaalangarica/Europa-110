@@ -126,7 +126,7 @@ export async function saveMember(_prev: ActionResult | null, form: FormData): Pr
 
   if (!usuario) return failure('El usuario es obligatorio.')
   if (!grado) return failure('Elige el grado.')
-  if (password && password.length < 8) return failure('La contraseña debe tener al menos 8 caracteres.')
+  if (password && password.length < 3) return failure('La contraseña provisional debe tener al menos 3 caracteres.')
   if (!id && !password) return failure('Pon una contraseña para la cuenta nueva.')
 
   const row = {
@@ -147,7 +147,8 @@ export async function saveMember(_prev: ActionResult | null, form: FormData): Pr
     if (taken) return failure('Ya hay otra persona con ese usuario.')
 
     if (id) {
-      const { error } = await db().from('miembros').update(row).eq('id', id)
+      // Una contraseña puesta por Administración es provisional: se le pedirá que la cambie.
+      const { error } = await db().from('miembros').update(password ? { ...row, debe_cambiar_clave: true } : row).eq('id', id)
       if (error) throw error
       if (password) {
         const { error: pwError } = await db().auth.admin.updateUserById(id, { password })
@@ -156,7 +157,7 @@ export async function saveMember(_prev: ActionResult | null, form: FormData): Pr
     } else {
       const { data, error } = await db().auth.admin.createUser({ email: internalEmail(), password, email_confirm: true })
       if (error || !data.user) throw error ?? new Error('Sin usuario')
-      const { error: insertError } = await db().from('miembros').insert({ ...row, id: data.user.id })
+      const { error: insertError } = await db().from('miembros').insert({ ...row, id: data.user.id, debe_cambiar_clave: true })
       if (insertError) {
         await db().auth.admin.deleteUser(data.user.id)
         throw insertError

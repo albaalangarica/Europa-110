@@ -6,7 +6,7 @@ import { BookOpen, CalendarDays, FolderLock, Gavel, GraduationCap, NotebookPen, 
 import { cn } from '@/lib/cn'
 import type { NavIcon, NavItem } from './nav'
 
-const ICONS: Record<NavIcon, LucideIcon> = {
+export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   agenda: CalendarDays,
   planchas: ScrollText,
   interno: FolderLock,
@@ -16,7 +16,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   formacion: BookOpen,
 }
 
-function isActive(pathname: string, item: NavItem): boolean {
+export function isActive(pathname: string, item: NavItem): boolean {
   return item.match.some((m) => (m === '/' ? pathname === '/' : pathname === m || pathname.startsWith(`${m}/`)))
 }
 
@@ -26,11 +26,11 @@ export function BottomNav({ items }: { items: NavItem[] }) {
   return (
     <nav
       aria-label="Navegación principal"
-      className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85"
+      className="pb-safe fixed inset-x-0 bottom-0 z-30 md:hidden border-t border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85"
     >
       <ul className="mx-auto grid max-w-[640px] grid-flow-col auto-cols-fr px-1.5">
         {items.map((item) => {
-          const Icon = ICONS[item.icon]
+          const Icon = NAV_ICONS[item.icon]
           const active = isActive(pathname, item)
           return (
             <li key={item.href}>

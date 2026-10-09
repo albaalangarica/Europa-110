@@ -81,5 +81,5 @@ npm install
 cp .env.example .env.local   # con un Supabase de PRUEBAS
 npm run dev
 npm run check                # lint + tipos + build
-npm run test:e2e             # flujos completos (necesita datos importados y contraseña prueba-1234)
+npm run test:e2e             # flujos completos (necesita datos importados y contraseña provisional 110)
 ```

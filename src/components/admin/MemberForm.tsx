@@ -37,8 +37,11 @@ export function MemberForm({ member, saved }: { member: Miembro | null; saved?: 
       <Field label="Cargos" hint="Uno o varios separados por comas: Secretario, Venerable Maestro, Primer Vigilante, Segundo Vigilante, Apoyo formación Compañeros, Apoyo formación Aprendices, Tronco de la Viuda, Tesorero, Hospitalario…">
         <input name="cargos" defaultValue={member?.cargos} className="control" />
       </Field>
-      <Field label={member ? 'Nueva contraseña' : 'Contraseña'} hint={member ? 'Déjala vacía para no cambiarla. Mínimo 8 caracteres.' : 'Mínimo 8 caracteres.'}>
-        <input name="password" type="password" autoComplete="new-password" minLength={8} required={!member} className="control" />
+      <Field
+        label={member ? 'Nueva contraseña provisional' : 'Contraseña provisional'}
+        hint={`${member ? 'Déjala vacía para no cambiarla. ' : ''}Al entrar se le pedirá que la cambie por una suya.`}
+      >
+        <input name="password" type="text" autoComplete="off" minLength={3} required={!member} className="control" />
       </Field>
       <label className="col-span-2 flex min-h-tap items-center gap-3 rounded-control border border-line bg-surface px-3.5 text-[14px] font-medium">
         <input type="checkbox" name="activo" defaultChecked={member?.activo ?? true} className="size-5 accent-primary" />

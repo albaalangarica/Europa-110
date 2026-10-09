@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/admin'
@@ -56,6 +57,7 @@ export async function changePassword(_prev: ActionResult | null, form: FormData)
   const confirm = String(form.get('confirm') ?? '')
   if (next.length < 8) return failure('La nueva contraseña debe tener al menos 8 caracteres.')
   if (next !== confirm) return failure('Las dos contraseñas no coinciden.')
+  if (next === current) return failure('La nueva contraseña tiene que ser distinta de la actual.')
 
   try {
     const supabase = await createSupabaseServerClient()
@@ -67,6 +69,9 @@ export async function changePassword(_prev: ActionResult | null, form: FormData)
     if (wrong) return failure('La contraseña actual no es correcta.')
     const { error } = await supabase.auth.updateUser({ password: next })
     if (error) throw error
+    const { error: flagError } = await db().from('miembros').update({ debe_cambiar_clave: false }).eq('id', member.id)
+    if (flagError) throw flagError
+    revalidatePath('/', 'layout')
     return success('Contraseña cambiada.')
   } catch (error) {
     console.error('[contraseña]', error)

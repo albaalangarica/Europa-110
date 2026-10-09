@@ -2,12 +2,12 @@ import { expect, test, type Page } from '@playwright/test'
 
 /*
  * Recorre los flujos de la app contra un Supabase de pruebas con los datos importados del Sheet
- * (scripts/importar-sheet.mjs) y contraseña "prueba-1234" para todos. Fecha de referencia: octubre de 6026,
+ * (scripts/importar-sheet.mjs) y contraseña provisional "110" para todos. Fecha de referencia: octubre de 6026,
  * con la tenida EVT-6026-002 (10/10) dentro de la ventana de confirmación.
  * Si E2E_SHOTS está definido, guarda capturas de cada pantalla en esa carpeta.
  */
 
-const PASSWORD = 'prueba-1234'
+const PASSWORD = '110'
 // Título único por ejecución, para poder repetir las pruebas sobre la misma base.
 const FORMATION = `Simbolismo del nivel ${Date.now().toString(36)}`
 const shots = process.env.E2E_SHOTS
@@ -196,7 +196,7 @@ test('invitados: calendario, planchas e inscripción', async ({ page }) => {
 
 test('administración: crear y editar una tenida, y ver invitados', async ({ page }) => {
   await login(page, 'Alba')
-  await page.getByRole('link', { name: 'Perfil' }).click()
+  await page.getByRole('link', { name: /^Perfil/ }).first().click()
   await shot(page, '17-perfil')
   await page.getByRole('link', { name: /Gestionar contenidos/ }).click()
   await shot(page, '18-admin')
@@ -219,9 +219,27 @@ test('administración: crear y editar una tenida, y ver invitados', async ({ pag
   await expect(page.getByText('Visitante de prueba').first()).toBeVisible()
 })
 
+test('contraseña provisional: aviso hasta cambiarla', async ({ page }) => {
+  const user = test.info().project.name === 'movil' ? 'Itziar' : 'Carlos'
+  await login(page, user)
+  const aviso = page.getByRole('link', { name: /Estás usando la contraseña provisional/ })
+  await expect(aviso).toBeVisible()
+  await shot(page, '20-aviso-contrasena')
+  await aviso.click()
+  await expect(page).toHaveURL(/\/perfil/)
+  await page.getByLabel('Contraseña actual').fill(PASSWORD)
+  await page.getByLabel('Nueva contraseña', { exact: true }).fill('mi-clave-segura')
+  await page.getByLabel('Repite la nueva contraseña').fill('mi-clave-segura')
+  await page.getByRole('button', { name: 'Cambiar contraseña' }).click()
+  await expect(page.getByText('Contraseña cambiada.')).toBeVisible()
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
+  await expect(aviso).toHaveCount(0)
+})
+
 test('perfil: cerrar sesión', async ({ page }) => {
   await login(page, 'Alba')
-  await page.getByRole('link', { name: 'Perfil' }).click()
+  await page.getByRole('link', { name: /^Perfil/ }).first().click()
   await page.getByRole('button', { name: 'Cerrar sesión' }).click()
   await expect(page).toHaveURL(/\/acceso/)
   await page.goto('/planchas')

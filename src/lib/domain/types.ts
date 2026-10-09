@@ -10,6 +10,8 @@ export interface Miembro {
   activo: boolean
   observaciones: string
   ultimo_acceso: string | null
+  // Tiene la contraseña provisional: la app le pide que la cambie.
+  debe_cambiar_clave: boolean
 }
 
 export interface Tenida {

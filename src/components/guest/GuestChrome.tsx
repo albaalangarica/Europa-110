@@ -12,12 +12,13 @@ export function GuestHeader() {
   const title = pathname.startsWith('/invitados/planchas') ? 'Planchas' : 'Calendario'
   return (
     <header className="pt-safe sticky top-0 z-20 border-b border-line bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/85">
-      <div className="mx-auto flex h-header max-w-[640px] items-center gap-3 px-gutter">
+      <div className="mx-auto flex h-header max-w-[640px] items-center gap-3 px-gutter md:h-16 md:max-w-3xl md:px-8">
         <Image src={logo} alt="" width={30} height={30} priority className="size-[30px] rounded-[7px]" />
         <div className="min-w-0 flex-1 leading-tight">
           <p className="text-[10.5px] font-semibold tracking-[0.18em] text-muted">EUROPA 110</p>
-          <h1 className="truncate text-[17px] font-semibold tracking-[-0.01em]">{title}</h1>
+          <h1 className="truncate text-[17px] font-semibold tracking-[-0.01em] md:sr-only">{title}</h1>
         </div>
+        <GuestLinks className="hidden md:flex" />
         <Link href="/acceso" className="inline-flex min-h-tap items-center rounded-control px-3 text-[14px] font-semibold text-primary hover:bg-selected">
           Retejo
         </Link>
@@ -34,7 +35,7 @@ const ITEMS = [
 export function GuestNav() {
   const pathname = usePathname()
   return (
-    <nav aria-label="Navegación de invitados" className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur">
+    <nav aria-label="Navegación de invitados" className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur md:hidden">
       <ul className="mx-auto grid max-w-[640px] grid-cols-2 px-1.5">
         {ITEMS.map(({ href, label, Icon, match }) => {
           const active = match(pathname)
@@ -52,6 +53,32 @@ export function GuestNav() {
           )
         })}
       </ul>
+    </nav>
+  )
+}
+
+/** En pantallas anchas, Calendario y Planchas van en la cabecera. */
+function GuestLinks({ className }: { className?: string }) {
+  const pathname = usePathname()
+  return (
+    <nav aria-label="Navegación de invitados" className={cn('ml-auto items-center gap-1', className)}>
+      {ITEMS.map(({ href, label, Icon, match }) => {
+        const active = match(pathname)
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'flex h-10 items-center gap-2 rounded-full px-3.5 text-[14px]',
+              active ? 'bg-selected font-semibold text-primary' : 'font-medium text-muted hover:bg-subtle hover:text-ink',
+            )}
+          >
+            <Icon aria-hidden className="size-[18px]" strokeWidth={active ? 2 : 1.75} />
+            {label}
+          </Link>
+        )
+      })}
     </nav>
   )
 }
