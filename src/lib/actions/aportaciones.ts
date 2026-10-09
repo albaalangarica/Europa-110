@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/supabase/admin'
+import { avisoDeAportacion } from '@/lib/data/avisos'
 import { findFormation } from '@/lib/data/library'
 import type { CurrentMember } from '@/lib/auth/session'
 import type { ActionResult } from '@/lib/domain/types'
@@ -44,6 +45,7 @@ export async function addContribution(_prev: ActionResult | null, form: FormData
     if (!formation) return failure('No tienes acceso a esta formación.')
     const { error } = await db().from('aportaciones').insert({ formacion_id: formation.id, miembro_id: member.id, ...fields })
     if (error) throw error
+    await avisoDeAportacion(formation, { id: member.id, nombre: member.nombre || member.usuario }, fields.texto)
     revalidatePath('/', 'layout')
     return success('Aportación publicada.')
   } catch (error) {

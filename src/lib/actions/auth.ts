@@ -55,7 +55,7 @@ export async function changePassword(_prev: ActionResult | null, form: FormData)
   const current = String(form.get('current') ?? '')
   const next = String(form.get('password') ?? '')
   const confirm = String(form.get('confirm') ?? '')
-  if (next.length < 8) return failure('La nueva contraseña debe tener al menos 8 caracteres.')
+  if (!next) return failure('Escribe la nueva contraseña.')
   if (next !== confirm) return failure('Las dos contraseñas no coinciden.')
   if (next === current) return failure('La nueva contraseña tiene que ser distinta de la actual.')
 
@@ -67,8 +67,14 @@ export async function changePassword(_prev: ActionResult | null, form: FormData)
     // Se comprueba la contraseña actual antes de cambiarla.
     const { error: wrong } = await supabase.auth.signInWithPassword({ email, password: current })
     if (wrong) return failure('La contraseña actual no es correcta.')
-    const { error } = await supabase.auth.updateUser({ password: next })
-    if (error) throw error
+    // Sin mínimo de longitud: cada uno pone la que quiera (ver supabase/migrations/…_cambiar_clave.sql).
+    const { error } = await db().rpc('cambiar_clave', { miembro: member.id, clave: next })
+    if (error?.code === 'PGRST202') {
+      // Falta ejecutar la migración: Supabase exige entonces al menos 6 caracteres.
+      if (next.length < 6) return failure('De momento la contraseña debe tener al menos 6 caracteres.')
+      const { error: authError } = await supabase.auth.updateUser({ password: next })
+      if (authError) throw authError
+    } else if (error) throw error
     const { error: flagError } = await db().from('miembros').update({ debe_cambiar_clave: false }).eq('id', member.id)
     if (flagError) throw flagError
     revalidatePath('/', 'layout')

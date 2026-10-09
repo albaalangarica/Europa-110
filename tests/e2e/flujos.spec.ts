@@ -8,6 +8,7 @@ import { expect, test, type Page } from '@playwright/test'
  */
 
 const PASSWORD = '110'
+const PROPOSICION = `Propuesta ${Date.now().toString(36)}`
 // Título único por ejecución, para poder repetir las pruebas sobre la misma base.
 const FORMATION = `Simbolismo del nivel ${Date.now().toString(36)}`
 const shots = process.env.E2E_SHOTS
@@ -78,6 +79,17 @@ test('aprendiz: agenda, confirmar asistencia, planchas, interno y su panel', asy
   await shot(page, '06-planchas')
   await page.getByLabel('Buscar planchas').fill('zzzz')
   await expect(page.getByText('No se han encontrado planchas')).toBeVisible()
+
+  // Saco de proposiciones: queda provisional (en gris) hasta que se apruebe.
+  await page.getByRole('link', { name: /Saco de proposiciones/ }).click()
+  await expect(page.getByText(/Cualquier persona con el enlace/)).toBeVisible()
+  await page.getByRole('button', { name: 'Dejar una proposición' }).click()
+  await page.getByLabel('Título').fill(PROPOSICION)
+  await page.getByLabel('Enlace de Drive').fill('https://drive.google.com/file/d/propuesta/view')
+  await page.getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText(/Proposición enviada/)).toBeVisible()
+  await expect(page.locator('article', { hasText: PROPOSICION }).getByText('Provisional')).toBeVisible()
+  await shot(page, '06b-saco')
 
   await nav.getByRole('link', { name: 'Interno' }).click()
   await expect(page.getByText('Sin asuntos publicados')).toBeVisible()
@@ -176,9 +188,19 @@ test('secretaría: confirmaciones, marcar asistencia de otro y Tronco', async ({
   await nav.getByRole('link', { name: 'Secretaría' }).click()
   await expect(page.getByText('Planchas sin leer')).toBeVisible()
   await expect(page.getByText('No hay planchas pendientes de lectura')).toBeVisible()
-  const card = page.locator('article', { hasText: 'Instalación' }).first()
-  // La tenida pasada tiene el detalle plegado.
-  await card.getByText('Nombres, asistencia y Tronco').click()
+  // Aprueba la proposición del saco.
+  await nav.getByRole('link', { name: 'Planchas' }).click()
+  await page.getByRole('link', { name: /Saco de proposiciones/ }).click()
+  const prop = page.locator('article', { hasText: PROPOSICION })
+  await expect(prop.getByText('Pendiente de aprobar')).toBeVisible()
+  await prop.getByRole('button', { name: 'Aprobar' }).click()
+  await expect(prop.getByText('Aprobada', { exact: true })).toBeVisible()
+  await nav.getByRole('link', { name: 'Secretaría' }).click()
+
+  // Solo la próxima tenida se ve entera; las demás van plegadas.
+  await expect(page.getByText('Próxima tenida')).toBeVisible()
+  const card = page.locator('details', { hasText: 'Instalación' }).first()
+  await card.locator('summary').first().click()
   await expect(card.getByRole('definition').filter({ hasText: 'Fernando' })).toBeVisible()
 
   await card.getByText('Marcar asistencia').click()
@@ -190,7 +212,7 @@ test('secretaría: confirmaciones, marcar asistencia de otro y Tronco', async ({
   await expect(card.getByText('Importe guardado.')).toBeVisible()
   await shot(page, '13-secretaria')
   await page.reload()
-  await expect(page.locator('li', { hasText: 'Instalación' }).getByText('20,50 €')).toBeVisible()
+  await expect(page.locator('li', { hasText: 'Instalación' }).getByText('20,50 €').first()).toBeVisible()
 })
 
 test('venerable: ve el panel de gestión sin marcar asistencia de otros', async ({ page }) => {
@@ -199,7 +221,7 @@ test('venerable: ve el panel de gestión sin marcar asistencia de otros', async 
   await expect(nav.getByRole('link')).toHaveText(['Agenda', 'Planchas', 'Interno', 'Venerable'])
   await nav.getByRole('link', { name: 'Venerable' }).click()
   await expect(page.getByRole('heading', { name: 'Venerable Maestro', level: 1 })).toBeVisible()
-  await expect(page.getByText('Confirmaciones a las tenidas')).toBeVisible()
+  await expect(page.getByText('Próxima tenida')).toBeVisible()
   await expect(page.getByText('Marcar asistencia')).toHaveCount(0)
   await shot(page, '14-venerable')
 })
@@ -257,13 +279,48 @@ test('contraseña provisional: aviso hasta cambiarla', async ({ page }) => {
   await aviso.click()
   await expect(page).toHaveURL(/\/perfil/)
   await page.getByLabel('Contraseña actual').fill(PASSWORD)
-  await page.getByLabel('Nueva contraseña', { exact: true }).fill('mi-clave-segura')
-  await page.getByLabel('Repite la nueva contraseña').fill('mi-clave-segura')
+  await page.getByLabel('Nueva contraseña', { exact: true }).fill('333')
+  await page.getByLabel('Repite la nueva contraseña').fill('333')
   await page.getByRole('button', { name: 'Cambiar contraseña' }).click()
   await expect(page.getByText('Contraseña cambiada.')).toBeVisible()
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
   await expect(aviso).toHaveCount(0)
+})
+
+test('avisos: banner al publicarse una tenida y campana', async ({ page, browser }) => {
+  const user = test.info().project.name === 'movil' ? 'Miguel' : 'Ana'
+  await login(page, user)
+  await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
+  // La primera vez en este dispositivo no salta lo anterior.
+  await page.waitForTimeout(1500)
+
+  // Administración publica una tenida en otra sesión.
+  const adminContext = await browser.newContext({ baseURL: test.info().project.use.baseURL, locale: 'es-ES', timezoneId: 'Europe/Madrid' })
+  const admin = await adminContext.newPage()
+  await login(admin, 'Alba')
+  await expect(admin.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
+  await admin.goto('/admin/tenidas/nuevo')
+  const title = `Tenida avisada ${Date.now().toString(36)}`
+  await admin.getByLabel('Fecha').fill('2027-07-17')
+  await admin.getByLabel('Título').fill(title)
+  await admin.getByRole('button', { name: 'Crear tenida' }).click()
+  await expect(admin.getByText('Guardado.')).toBeVisible()
+  await adminContext.close()
+
+  // Al volver a la app, baja el aviso.
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  const toast = page.getByRole('status').filter({ hasText: `Nueva tenida: ${title}` })
+  await expect(toast).toBeVisible()
+  await shot(page, '21-aviso-banner')
+
+  // La campana lleva a la lista, con la confirmación de asistencia abierta incluida.
+  await page.getByRole('link', { name: /Avisos, \d+ sin ver/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'Avisos', level: 1 })).toBeVisible()
+  await expect(page.getByRole('link', { name: new RegExp(`Nueva tenida: ${title}`) })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Ya puedes confirmar tu asistencia/ }).first()).toBeVisible()
+  await shot(page, '22-avisos')
+  await expect(page.getByRole('link', { name: /^Avisos$/ }).first()).toBeAttached()
 })
 
 test('perfil: cerrar sesión', async ({ page }) => {

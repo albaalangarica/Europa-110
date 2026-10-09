@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/supabase/admin'
 import { findTenida } from '@/lib/data/agenda'
+import { avisoDeFormacion } from '@/lib/data/avisos'
 import { attendanceIsOpen, isPast, toIsoDate } from '@/lib/domain/dates'
 import { FORMATION_LEVELS, isVisibleForUser, type FormationLevel } from '@/lib/domain/permissions'
 import { normalizeText } from '@/lib/domain/text'
@@ -127,7 +128,7 @@ export async function publishFormation(_prev: ActionResult | null, form: FormDat
   if (enlaces.some((url) => !/^https?:\/\//i.test(url))) return failure('Los enlaces deben empezar por http:// o https://')
 
   try {
-    const { error } = await db()
+    const { data: created, error } = await db()
       .from('formaciones')
       .insert({
         nivel,
@@ -139,7 +140,10 @@ export async function publishFormation(_prev: ActionResult | null, form: FormDat
         enlaces,
         publicado_por: member.nombre || member.usuario,
       })
+      .select('id')
+      .single()
     if (error) throw error
+    await avisoDeFormacion({ id: created.id as string, nivel, titulo, fecha: fecha || null, hora: text(form, 'hora', 20) }, member.id)
     revalidatePath('/', 'layout')
     return success('Formación publicada.')
   } catch (error) {

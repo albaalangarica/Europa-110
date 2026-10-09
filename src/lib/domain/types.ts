@@ -12,6 +12,7 @@ export interface Miembro {
   ultimo_acceso: string | null
   // Tiene la contraseña provisional: la app le pide que la cambie.
   debe_cambiar_clave: boolean
+  avisos_vistos_at: string | null
 }
 
 export interface Tenida {
@@ -140,3 +141,27 @@ export interface AttendanceSummary {
 }
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string }
+
+// Aviso dentro de la app. Los de asistencia se calculan; el resto se guarda en la tabla avisos.
+export interface Aviso {
+  id: string
+  tipo: 'tenida' | 'orden' | 'convocatoria' | 'formacion' | 'aportacion' | 'asistencia' | 'recordatorio'
+  titulo: string
+  cuerpo: string
+  enlace: string
+  fecha: string // ISO
+}
+
+// Enlace dejado en el Saco de proposiciones. Provisional hasta que se aprueba.
+export interface Proposicion {
+  id: number
+  titulo: string
+  enlace: string
+  nota: string
+  miembro_id: string | null
+  autor: string
+  aprobada: boolean
+  aprobada_por: string
+  aprobada_at: string | null
+  created_at: string
+}

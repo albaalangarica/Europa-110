@@ -41,7 +41,7 @@ export function MemberForm({ member, saved }: { member: Miembro | null; saved?: 
         label={member ? 'Nueva contraseña provisional' : 'Contraseña provisional'}
         hint={`${member ? 'Déjala vacía para no cambiarla. ' : ''}Al entrar se le pedirá que la cambie por una suya.`}
       >
-        <input name="password" type="text" autoComplete="off" minLength={3} required={!member} className="control" />
+        <input name="password" type="text" autoComplete="off" required={!member} className="control" />
       </Field>
       <label className="col-span-2 flex min-h-tap items-center gap-3 rounded-control border border-line bg-surface px-3.5 text-[14px] font-medium">
         <input type="checkbox" name="activo" defaultChecked={member?.activo ?? true} className="size-5 accent-primary" />
