@@ -41,8 +41,16 @@ export function PublishFormation({ level, audience }: { level: 'Compañero' | 'A
       <Field label="Título">
         <input name="titulo" type="text" required className="control" />
       </Field>
-      <Field label="Fecha de la formación" hint="opcional">
-        <input name="fecha" type="date" className="control" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Fecha" hint="opcional">
+          <input name="fecha" type="date" className="control" />
+        </Field>
+        <Field label="Hora" hint="opcional">
+          <input name="hora" type="time" className="control" />
+        </Field>
+      </div>
+      <Field label="Lugar o enlace de conexión" hint="opcional">
+        <input name="lugar" type="text" className="control" />
       </Field>
       <Field label="Nota">
         <textarea name="nota" rows={4} placeholder={`Indicaciones para los ${audience}`} className="control" />

@@ -97,11 +97,25 @@ export interface Formacion {
   nivel: 'Compañero' | 'Aprendiz'
   titulo: string
   fecha: string | null
+  hora: string
+  lugar: string
   nota: string
   enlaces: string[]
   publicado_por: string
   publicado_at: string
   activo: boolean
+}
+
+// Reflexión o enlace que un hermano aporta a una formación.
+export interface Aportacion {
+  id: number
+  formacion_id: string
+  miembro_id: string
+  autor: string
+  texto: string
+  enlace: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Invitado {

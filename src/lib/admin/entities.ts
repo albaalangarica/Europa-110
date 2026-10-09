@@ -168,6 +168,8 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
       { name: 'nivel', label: 'Nivel', type: 'select', options: ['Compañero', 'Aprendiz'], required: true, half: true },
       { name: 'fecha', label: 'Fecha', type: 'date', half: true },
       { name: 'titulo', label: 'Título', type: 'text', required: true },
+      { name: 'hora', label: 'Hora', type: 'text', hint: 'Por ejemplo 19:30', half: true },
+      { name: 'lugar', label: 'Lugar o enlace de conexión', type: 'text', half: true },
       { name: 'nota', label: 'Nota', type: 'textarea' },
       { name: 'enlaces', label: 'Enlaces', type: 'lines', hint: 'Uno por línea, en orden' },
       { name: 'publicado_por', label: 'Publicado por', type: 'text' },

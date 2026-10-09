@@ -129,7 +129,16 @@ export async function publishFormation(_prev: ActionResult | null, form: FormDat
   try {
     const { error } = await db()
       .from('formaciones')
-      .insert({ nivel, titulo, fecha: fecha || null, nota: text(form, 'nota', 8000), enlaces, publicado_por: member.nombre || member.usuario })
+      .insert({
+        nivel,
+        titulo,
+        fecha: fecha || null,
+        hora: text(form, 'hora', 20),
+        lugar: text(form, 'lugar', 300),
+        nota: text(form, 'nota', 8000),
+        enlaces,
+        publicado_por: member.nombre || member.usuario,
+      })
     if (error) throw error
     revalidatePath('/', 'layout')
     return success('Formación publicada.')

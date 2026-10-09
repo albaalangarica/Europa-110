@@ -59,3 +59,20 @@ describe('fechas', () => {
     expect(toIsoDate('3/1/2027')).toBe('2027-01-03')
   })
 })
+
+import { buildIcs, googleCalendarUrl } from '@/lib/domain/calendar'
+
+describe('calendario', () => {
+  it('con hora: 2 horas en hora de España', () => {
+    const ics = buildIcs({ uid: 'F1', title: 'Formación: Prueba, uno; dos', date: '2026-10-22', time: '19:30' }, new Date('2026-10-09T10:00:00Z'))
+    expect(ics).toContain('DTSTART;TZID=Europe/Madrid:20261022T193000')
+    expect(ics).toContain('DTEND;TZID=Europe/Madrid:20261022T213000')
+    expect(ics).toContain('SUMMARY:Formación: Prueba\\, uno\\; dos')
+  })
+  it('sin hora: día entero', () => {
+    const ics = buildIcs({ uid: 'F2', title: 'X', date: '2026-12-31' })
+    expect(ics).toContain('DTSTART;VALUE=DATE:20261231')
+    expect(ics).toContain('DTEND;VALUE=DATE:20270101')
+    expect(googleCalendarUrl({ uid: 'F2', title: 'X', date: '2026-12-31' })).toContain('dates=20261231%2F20270101')
+  })
+})

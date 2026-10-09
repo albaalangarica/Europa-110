@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronRight, Paperclip } from 'lucide-react'
+import { ChevronRight, MessageSquareText, Paperclip } from 'lucide-react'
 import { DateBlock } from '@/components/ui/DateBlock'
 import type { Formacion } from '@/lib/domain/types'
 
@@ -8,7 +8,7 @@ export function levelSlug(level: string): 'companero' | 'aprendiz' {
 }
 
 /** Formación en tarjeta compacta: fecha, título, primera línea de la nota y nº de materiales. */
-export function FormationCard({ item, past }: { item: Formacion; past?: boolean }) {
+export function FormationCard({ item, past, contributions = 0 }: { item: Formacion; past?: boolean; contributions?: number }) {
   const preview = item.nota.split(/\r?\n/).find((l) => l.trim()) ?? ''
   const materials = item.enlaces.length
   return (
@@ -29,10 +29,20 @@ export function FormationCard({ item, past }: { item: Formacion; past?: boolean 
       <div className="min-w-0 flex-1">
         <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug">{item.titulo || 'Formación'}</h3>
         {preview ? <p className="mt-0.5 truncate text-[13px] text-muted">{preview}</p> : null}
-        {materials ? (
-          <p className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary">
-            <Paperclip aria-hidden className="size-3.5" strokeWidth={2} />
-            {materials === 1 ? '1 material' : `${materials} materiales`}
+        {materials || contributions ? (
+          <p className="mt-1.5 flex flex-wrap gap-x-3 text-[12.5px] font-semibold text-primary">
+            {materials ? (
+              <span className="inline-flex items-center gap-1">
+                <Paperclip aria-hidden className="size-3.5" strokeWidth={2} />
+                {materials === 1 ? '1 material' : `${materials} materiales`}
+              </span>
+            ) : null}
+            {contributions ? (
+              <span className="inline-flex items-center gap-1 text-deep">
+                <MessageSquareText aria-hidden className="size-3.5" strokeWidth={2} />
+                {contributions === 1 ? '1 aportación' : `${contributions} aportaciones`}
+              </span>
+            ) : null}
           </p>
         ) : null}
       </div>

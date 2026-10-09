@@ -8,6 +8,7 @@ import { ManagementView } from '@/components/panels/ManagementView'
 import { EmptyState } from '@/components/ui/States'
 import { Tabs } from '@/components/ui/Tabs'
 import { requireMember, type CurrentMember } from '@/lib/auth/session'
+import { countContributions } from '@/lib/data/aportaciones'
 import { getFormations, getManagementData } from '@/lib/data/library'
 import { todayIso } from '@/lib/domain/dates'
 import type { FormationLevel, RolePanel } from '@/lib/domain/permissions'
@@ -80,6 +81,7 @@ export default async function PanelPage({ params, searchParams }: PageProps<'/pa
 
   const level = config.level!
   const items = await getFormations([level])
+  const counts = await countContributions(items.map((f) => f.id))
   const today = todayIso()
   // Las formaciones sin fecha se consideran próximas.
   const upcoming = items.filter((f) => !f.fecha || f.fecha >= today).sort(byDate)
@@ -108,7 +110,7 @@ export default async function PanelPage({ params, searchParams }: PageProps<'/pa
         />
         <div className="mt-4 grid gap-2.5">
           {list.length ? (
-            list.map((f) => <FormationCard key={f.id} item={f} past={active === 'anteriores'} />)
+            list.map((f) => <FormationCard key={f.id} item={f} past={active === 'anteriores'} contributions={counts.get(f.id) ?? 0} />)
           ) : (
             <EmptyState icon={BookOpen} title={active === 'anteriores' ? 'Todavía no hay formaciones anteriores' : 'No hay convocatorias de formación'}>
               {active === 'anteriores'

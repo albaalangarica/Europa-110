@@ -105,7 +105,9 @@ test('primer vigilante: publica una formación con enlaces en orden', async ({ p
   await expect(page.getByRole('heading', { name: 'Primer Vigilante', level: 1 })).toBeVisible()
   await page.getByRole('button', { name: 'Publicar formación' }).click()
   await page.getByLabel('Título').fill(FORMATION)
-  await page.getByLabel('Fecha de la formación').fill('2026-10-22')
+  await page.getByLabel('Fecha').fill('2026-10-22')
+  await page.getByLabel('Hora').fill('19:30')
+  await page.getByLabel('Lugar o enlace de conexión').fill('Templo de Vitoria')
   await page.getByLabel('Nota').fill('Primera línea de la nota\nSegunda línea')
   await page.getByLabel('Enlace', { exact: true }).fill('https://example.org/uno')
   await page.getByRole('button', { name: 'Añadir otro enlace' }).click()
@@ -139,6 +141,33 @@ test('compañero: pestañas Próximas y Anteriores, detalle con materiales', asy
   await shot(page, '12-formacion-detalle')
   await page.getByRole('link', { name: 'Volver a Compañero' }).click()
   await expect(page.getByRole('heading', { name: 'Compañero', level: 1 })).toBeVisible()
+
+  // Panel de la formación nueva: calendario y aportaciones.
+  await page.getByRole('link', { name: /Próximas/ }).click()
+  await page.getByRole('link', { name: `Abrir ${FORMATION}` }).click()
+  await expect(page.getByText('Templo de Vitoria')).toBeVisible()
+  const ics = await page.request.get(await page.getByRole('link', { name: 'Añadir al calendario' }).getAttribute('href') as string)
+  expect(ics.headers()['content-type']).toContain('text/calendar')
+  expect(await ics.text()).toContain('DTSTART;TZID=Europe/Madrid:20261022T193000')
+  await expect(page.getByRole('link', { name: 'Google Calendar' })).toHaveAttribute('href', /calendar\.google\.com/)
+
+  await page.getByRole('button', { name: 'Añadir una aportación' }).click()
+  await page.getByLabel('Reflexión').fill('Mi reflexión sobre el nivel')
+  await page.getByLabel(/^Enlace/).fill('https://drive.google.com/file/d/prueba/view')
+  await page.getByRole('button', { name: 'Publicar' }).click()
+  await expect(page.getByText('Aportación publicada.')).toBeVisible()
+  await expect(page.getByText('Mi reflexión sobre el nivel')).toBeVisible()
+  await expect(page.getByRole('link', { name: /drive\.google\.com/ })).toBeVisible()
+  await shot(page, '12b-formacion-panel')
+
+  await page.getByRole('button', { name: 'Editar mi aportación' }).click()
+  await page.getByLabel('Reflexión').fill('Reflexión corregida')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByText('Reflexión corregida')).toBeVisible()
+
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: 'Borrar mi aportación' }).click()
+  await expect(page.getByText('Reflexión corregida')).toHaveCount(0)
 })
 
 test('secretaría: confirmaciones, marcar asistencia de otro y Tronco', async ({ page }) => {
