@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { AppHeader, Page } from '@/components/layout/AppHeader'
 import { AttendanceBox } from '@/components/tenida/AttendanceBox'
 import { AttendanceSummary } from '@/components/tenida/AttendanceSummary'
+import { Oficialidad } from '@/components/tenida/Oficialidad'
 import { TroncoForm } from '@/components/tenida/TroncoForm'
 import { Tag } from '@/components/ui/Badge'
 import { DetailHero, DetailSection } from '@/components/ui/DetailHero'
@@ -10,6 +11,7 @@ import { ExternalLinkRow } from '@/components/ui/ExternalLinkRow'
 import { RichText } from '@/components/ui/RichText'
 import { requireMember } from '@/lib/auth/session'
 import { getTenidaDetail } from '@/lib/data/agenda'
+import { getActiveMembers, getOficialidad } from '@/lib/data/oficialidad'
 import { attendanceIsOpen, longDate } from '@/lib/domain/dates'
 import { displayTitle } from '@/lib/domain/tenidas'
 import { driveViewUrl, formatMoney, lines, safeLink } from '@/lib/domain/text'
@@ -23,6 +25,10 @@ export default async function TenidaPage({ params }: PageProps<'/tenidas/[id]'>)
   if (!detail) notFound()
 
   const { tenida, planchas, tronco, summary } = detail
+  const [oficialidad, members] = await Promise.all([
+    getOficialidad([tenida.id]).then((m) => m.get(tenida.id) ?? []),
+    member.permisos.oficialidad ? getActiveMembers() : Promise.resolve([]),
+  ])
   const order = lines(tenida.orden_del_dia)
   const convocatoria = safeLink(tenida.convocatoria)
 
@@ -47,6 +53,12 @@ export default async function TenidaPage({ params }: PageProps<'/tenidas/[id]'>)
         {attendanceIsOpen(tenida.fecha) ? (
           <DetailSection title="Asistencia">
             <AttendanceBox tenidaId={tenida.id} answer={tenida.miAsistencia} />
+          </DetailSection>
+        ) : null}
+
+        {oficialidad.length ? (
+          <DetailSection title="Oficialidad">
+            <Oficialidad tenidaId={tenida.id} puestos={oficialidad} members={members} canEdit={member.permisos.oficialidad} />
           </DetailSection>
         ) : null}
 

@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 
 /*
  * Recorre los flujos de la app contra un Supabase de pruebas con los datos importados del Sheet
- * (scripts/importar-sheet.mjs) y contraseña provisional "110" para todos. Fecha de referencia: octubre de 6026,
- * con la tenida EVT-6026-002 (10/10) dentro de la ventana de confirmación.
+ * (scripts/importar-sheet.mjs) y contraseña provisional "110" para todos. La tenida EVT-6026-002 debe caer
+ * en los próximos días (update tenidas set fecha = current_date + 1 …) para que la confirmación esté abierta.
  * Si E2E_SHOTS está definido, guarda capturas de cada pantalla en esa carpeta.
  */
 
@@ -60,6 +60,11 @@ test('aprendiz: agenda, confirmar asistencia, planchas, interno y su panel', asy
   await expect(page.getByText('Asistencia confirmada.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Confirmo asistencia' })).toHaveAttribute('aria-pressed', 'true')
   await shot(page, '05-tenida')
+  // Oficialidad en el orden de los puestos, con su estado; una aprendiz no puede cambiarla.
+  const puestos = page.locator('ol li', { has: page.getByText('Venerable Maestro') }).first()
+  await expect(puestos).toContainText('Fernando')
+  await expect(page.getByText(/de 10 confirmados/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cubrir' })).toHaveCount(0)
   // Una aprendiz no ve las confirmaciones ni registra el Tronco.
   await expect(page.getByText('Confirmaciones de la tenida')).toHaveCount(0)
   await expect(page.getByLabel('Importe del Tronco de la Viuda')).toHaveCount(0)
@@ -213,6 +218,21 @@ test('secretaría: confirmaciones, marcar asistencia de otro y Tronco', async ({
   await shot(page, '13-secretaria')
   await page.reload()
   await expect(page.locator('li', { hasText: 'Instalación' }).getByText('20,50 €').first()).toBeVisible()
+})
+
+test('secretaría: cubre un puesto de la oficialidad', async ({ page }) => {
+  await login(page, 'Manu')
+  await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
+  await page.goto('/tenidas/EVT-6026-002')
+  const orador = page.locator('li', { has: page.getByText('Orador', { exact: true }) })
+  await orador.getByRole('button', { name: 'Cubrir' }).click()
+  await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Carlos' })
+  await expect(orador).toContainText('en lugar de Javier')
+  await shot(page, '13b-oficialidad')
+  // Y se devuelve al titular.
+  await orador.getByRole('button', { name: 'Cubrir' }).click()
+  await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Titular: Javier' })
+  await expect(orador).not.toContainText('en lugar de')
 })
 
 test('venerable: ve el panel de gestión sin marcar asistencia de otros', async ({ page }) => {

@@ -10,6 +10,7 @@ import { Tabs } from '@/components/ui/Tabs'
 import { requireMember, type CurrentMember } from '@/lib/auth/session'
 import { countContributions } from '@/lib/data/aportaciones'
 import { getFormations, getManagementData } from '@/lib/data/library'
+import { getActiveMembers, getOficialidad } from '@/lib/data/oficialidad'
 import { todayIso } from '@/lib/domain/dates'
 import type { FormationLevel, RolePanel } from '@/lib/domain/permissions'
 import type { Formacion } from '@/lib/domain/types'
@@ -69,11 +70,15 @@ export default async function PanelPage({ params, searchParams }: PageProps<'/pa
 
   if (config.kind === 'gestion') {
     const data = await getManagementData()
+    const [oficialidad, members] = await Promise.all([
+      getOficialidad(data.attendance.map((r) => r.tenidaId)),
+      member.permisos.oficialidad ? getActiveMembers() : Promise.resolve([]),
+    ])
     return (
       <>
         <AppHeader title={config.title(member)} initial={initial} />
         <Page>
-          <ManagementView data={data} permisos={member.permisos} />
+          <ManagementView data={data} permisos={member.permisos} oficialidad={oficialidad} members={members} />
         </Page>
       </>
     )

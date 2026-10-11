@@ -1,19 +1,30 @@
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, HandCoins, ScrollText } from 'lucide-react'
 import { AdminAttendance } from '@/components/tenida/AdminAttendance'
+import { Oficialidad } from '@/components/tenida/Oficialidad'
 import { AttendanceSummary } from '@/components/tenida/AttendanceSummary'
 import { TroncoForm } from '@/components/tenida/TroncoForm'
 import { ExternalLinkRow } from '@/components/ui/ExternalLinkRow'
 import { Section } from '@/components/ui/Section'
 import { EmptyState } from '@/components/ui/States'
 import type { ManagementData, TroncoRow } from '@/lib/data/library'
-import type { AttendanceSummary as AttendanceSummaryRow } from '@/lib/domain/types'
+import type { AttendanceSummary as AttendanceSummaryRow, PuestoTenida } from '@/lib/domain/types'
 import { shortDate, todayIso } from '@/lib/domain/dates'
 import type { Permisos } from '@/lib/domain/permissions'
 import { driveViewUrl, formatMoney } from '@/lib/domain/text'
 
 /** Panel de Secretaría y del Venerable Maestro: planchas sin leer, confirmaciones y Tronco de la Viuda. */
-export function ManagementView({ data, permisos }: { data: ManagementData; permisos: Permisos }) {
+export function ManagementView({
+  data,
+  permisos,
+  oficialidad,
+  members,
+}: {
+  data: ManagementData
+  permisos: Permisos
+  oficialidad: Map<string, PuestoTenida[]>
+  members: { id: string; nombre: string }[]
+}) {
   const troncoById = new Map(data.tronco.map((t) => [t.tenida_id, t]))
   // La próxima tenida, la que tiene la confirmación abierta, se ve entera; el resto, en desplegables.
   const today = todayIso()
@@ -51,7 +62,7 @@ export function ManagementView({ data, permisos }: { data: ManagementData; permi
         {next ? (
           <article className="card p-4">
             <TenidaHeading row={next} />
-            <TenidaBody row={next} permisos={permisos} tronco={troncoById.get(next.tenidaId)} />
+            <TenidaBody row={next} permisos={permisos} tronco={troncoById.get(next.tenidaId)} puestos={oficialidad.get(next.tenidaId)} members={members} />
           </article>
         ) : (
           <EmptyState icon={CalendarDays} title="No hay ninguna tenida próxima" />
@@ -84,7 +95,7 @@ export function ManagementView({ data, permisos }: { data: ManagementData; permi
                     </summary>
                     <div className="border-t border-line p-4">
                       <TenidaHeading row={row} />
-                      <TenidaBody row={row} permisos={permisos} tronco={tronco} />
+                      <TenidaBody row={row} permisos={permisos} tronco={tronco} puestos={oficialidad.get(row.tenidaId)} members={members} />
                     </div>
                   </details>
                 )
@@ -126,9 +137,27 @@ function TenidaHeading({ row }: { row: AttendanceSummaryRow }) {
   )
 }
 
-function TenidaBody({ row, permisos, tronco }: { row: AttendanceSummaryRow; permisos: Permisos; tronco?: TroncoRow }) {
+function TenidaBody({
+  row,
+  permisos,
+  tronco,
+  puestos,
+  members,
+}: {
+  row: AttendanceSummaryRow
+  permisos: Permisos
+  tronco?: TroncoRow
+  puestos?: PuestoTenida[]
+  members: { id: string; nombre: string }[]
+}) {
   return (
     <>
+      {puestos?.length ? (
+        <div className="mb-4">
+          <p className="eyebrow mb-2">Oficialidad</p>
+          <Oficialidad tenidaId={row.tenidaId} puestos={puestos} members={members} canEdit={permisos.oficialidad} />
+        </div>
+      ) : null}
       <AttendanceSummary row={row} />
       {permisos.asistencia && row.personas.length ? <AdminAttendance row={row} /> : null}
       {permisos.tronco ? (

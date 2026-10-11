@@ -165,3 +165,15 @@ export interface Proposicion {
   aprobada_at: string | null
   created_at: string
 }
+
+// Puesto de la oficialidad en una tenida: quién lo ocupa y si ha confirmado.
+export interface PuestoTenida {
+  id: string
+  nombre: string
+  orden: number
+  titular: { id: string; nombre: string } | null
+  persona: { id: string; nombre: string } | null
+  // La persona cubre el puesto solo en esta tenida, en lugar del titular.
+  sustituto: boolean
+  estado: 'confirmado' | 'pendiente' | 'por-cubrir'
+}
