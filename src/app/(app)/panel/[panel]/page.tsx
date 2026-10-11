@@ -26,6 +26,7 @@ interface PanelConfig {
 const PANELS: Record<RolePanel, PanelConfig> = {
   secretaria: { allowed: (m) => m.permisos.secretaria, title: () => 'Secretaría', kind: 'gestion' },
   venerable: { allowed: (m) => m.permisos.venerable, title: () => 'Venerable Maestro', kind: 'gestion' },
+  gestion: { allowed: (m) => m.permisos.gestion, title: () => 'Gestión', kind: 'gestion' },
   'primer-vigilante': {
     allowed: (m) => m.permisos.formacion.publicar.includes('Compañero'),
     title: (m) => (m.permisos.primerVigilante ? 'Primer Vigilante' : 'Formación de Compañeros'),

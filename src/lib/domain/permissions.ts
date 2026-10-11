@@ -80,7 +80,8 @@ export function permissionsFor(user: UserLike): Permisos {
   return {
     secretaria,
     venerable,
-    gestion: secretaria || venerable,
+    // Administración también ve las confirmaciones y la oficialidad.
+    gestion: secretaria || venerable || administrador,
     asistencia: secretaria,
     primerVigilante,
     segundoVigilante,
@@ -126,7 +127,7 @@ export function isVisibleForUser(row: Visibility, user: UserLike): boolean {
  * quien publica formación ve el panel de Vigilante (o "Formación" si solo apoya),
  * y Compañeros y Aprendices ven el de su grado.
  */
-export type RolePanel = 'secretaria' | 'venerable' | 'primer-vigilante' | 'companero' | 'segundo-vigilante' | 'aprendiz'
+export type RolePanel = 'secretaria' | 'venerable' | 'gestion' | 'primer-vigilante' | 'companero' | 'segundo-vigilante' | 'aprendiz'
 
 export function rolePanels(p: Permisos): RolePanel[] {
   const panels: RolePanel[] = []
@@ -134,6 +135,8 @@ export function rolePanels(p: Permisos): RolePanel[] {
   const view = p.formacion.ver
   if (p.secretaria) panels.push('secretaria')
   if (p.venerable) panels.push('venerable')
+  // Administración sin ser Secretaría ni Venerable: el mismo panel, como "Gestión".
+  if (p.administracion && !p.secretaria && !p.venerable) panels.push('gestion')
   if (publish.includes('Compañero')) panels.push('primer-vigilante')
   if (view.includes('Compañero') && !publish.includes('Compañero')) panels.push('companero')
   if (publish.includes('Aprendiz')) panels.push('segundo-vigilante')

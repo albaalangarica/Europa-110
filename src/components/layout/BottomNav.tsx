@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, CalendarDays, FolderLock, Gavel, GraduationCap, NotebookPen, ScrollText, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarDays, ClipboardList, FolderLock, Gavel, GraduationCap, NotebookPen, ScrollText, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import type { NavIcon, NavItem } from './nav'
 
@@ -12,6 +12,7 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   interno: FolderLock,
   secretaria: NotebookPen,
   venerable: Gavel,
+  gestion: ClipboardList,
   vigilante: GraduationCap,
   formacion: BookOpen,
 }
