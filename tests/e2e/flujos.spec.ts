@@ -60,6 +60,11 @@ test('aprendiz: agenda, confirmar asistencia, planchas, interno y su panel', asy
   await expect(page.getByText('Asistencia confirmada.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Confirmo asistencia' })).toHaveAttribute('aria-pressed', 'true')
   await shot(page, '05-tenida')
+  // Añadir al calendario: .ics con la hora de la tenida y enlace de Google Calendar.
+  const tenidaIcs = await page.request.get((await page.getByRole('link', { name: 'Añadir al calendario' }).getAttribute('href')) as string)
+  expect(tenidaIcs.headers()['content-type']).toContain('text/calendar')
+  expect(await tenidaIcs.text()).toMatch(/DTSTART;TZID=Europe\/Madrid:\d{8}T170000/)
+  await expect(page.getByRole('link', { name: 'Google Calendar' })).toHaveAttribute('href', /calendar\.google\.com/)
   // Oficialidad en el orden de los puestos, con su estado; una aprendiz no puede cambiarla.
   const puestos = page.locator('ol li', { has: page.getByText('Venerable Maestro') }).first()
   await expect(puestos).toContainText('Fernando')

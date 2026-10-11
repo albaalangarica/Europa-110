@@ -77,9 +77,9 @@ export default async function FormationPage({ params }: PageProps<'/formacion/[n
           ) : null}
           {item.fecha ? (
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <a href={`/formacion/${nivel}/${encodeURIComponent(item.id)}/calendario`} className={buttonClass('primary')}>
+              <a href={`/formacion/${nivel}/${encodeURIComponent(item.id)}/calendario`} className={`${buttonClass('primary')} px-3`} aria-label="Añadir al calendario">
                 <CalendarPlus aria-hidden className="size-[18px]" strokeWidth={1.75} />
-                Añadir al calendario
+                <span className="whitespace-nowrap">Mi calendario</span>
               </a>
               <a
                 href={googleCalendarUrl({ uid: item.id, title: `Formación: ${item.titulo}`, date: item.fecha, time: item.hora, location: item.lugar, description: item.nota })}
@@ -87,7 +87,7 @@ export default async function FormationPage({ params }: PageProps<'/formacion/[n
                 rel="noopener noreferrer"
                 className={buttonClass('secondary')}
               >
-                Google Calendar
+                <span className="whitespace-nowrap">Google Calendar</span>
               </a>
             </div>
           ) : null}
