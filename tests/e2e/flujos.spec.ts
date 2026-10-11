@@ -359,8 +359,14 @@ test('avisos: banner al publicarse una tenida y campana', async ({ page, browser
 test('hospitalaria: checklist de contactos en Interno', async ({ page }) => {
   await login(page, 'Alba')
   await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
+  // Administración ve también las confirmaciones: panel "Gestión" y en la ficha de la tenida.
+  await page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('link', { name: 'Gestión' }).click()
+  await expect(page.getByRole('heading', { name: 'Gestión', level: 1 })).toBeVisible()
+  await expect(page.getByText('Próxima tenida')).toBeVisible()
+  await page.goto('/tenidas/EVT-6026-002')
+  await expect(page.getByText('Confirmaciones de la tenida')).toBeVisible()
   await page.goto('/interno')
-  await expect(page.getByText('Hospitalaria · contactos entre tenidas')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Hospitalaria · contactos entre tenidas' })).toBeVisible()
   const raquel = page.getByRole('checkbox', { name: /^Raquel:/ })
   if ((await raquel.getAttribute('aria-checked')) === 'true') {
     await raquel.click()

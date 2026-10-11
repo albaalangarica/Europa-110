@@ -1,6 +1,6 @@
 import { rolePanels, type Permisos, type RolePanel } from '@/lib/domain/permissions'
 
-export type NavIcon = 'agenda' | 'planchas' | 'interno' | 'secretaria' | 'venerable' | 'vigilante' | 'formacion'
+export type NavIcon = 'agenda' | 'planchas' | 'interno' | 'secretaria' | 'venerable' | 'gestion' | 'vigilante' | 'formacion'
 
 export interface NavItem {
   href: string
@@ -13,6 +13,7 @@ export interface NavItem {
 const PANEL_ITEMS: Record<RolePanel, (p: Permisos) => NavItem> = {
   secretaria: () => ({ href: '/panel/secretaria', label: 'Secretaría', icon: 'secretaria', match: ['/panel/secretaria'] }),
   venerable: () => ({ href: '/panel/venerable', label: 'Venerable', icon: 'venerable', match: ['/panel/venerable'] }),
+  gestion: () => ({ href: '/panel/gestion', label: 'Gestión', icon: 'gestion', match: ['/panel/gestion'] }),
   // Quien ayuda en la formación sin ser Vigilante ve el mismo panel con otro nombre.
   'primer-vigilante': (p) => ({
     href: '/panel/primer-vigilante',
