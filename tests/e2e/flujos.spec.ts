@@ -98,6 +98,7 @@ test('aprendiz: agenda, confirmar asistencia, planchas, interno y su panel', asy
 
   await nav.getByRole('link', { name: 'Interno' }).click()
   await expect(page.getByText('Sin asuntos publicados')).toBeVisible()
+  await expect(page.getByText('Hospitalaria · contactos entre tenidas')).toHaveCount(0)
   await expect(page.getByText('No hay documentos visibles')).toBeVisible()
   await shot(page, '07-interno')
 
@@ -224,21 +225,26 @@ test('secretaría: cubre un puesto de la oficialidad', async ({ page }) => {
   await login(page, 'Manu')
   await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
   await page.goto('/tenidas/EVT-6026-002')
-  const orador = page.locator('li[data-puesto="orador"]')
+  const orador = page.locator('li[data-puesto="orador"]').last()
+  // Mientras se guarda y la página se refresca, la fila puede aparecer un instante duplicada.
+  const settled = () => expect(page.locator('li[data-puesto="orador"]')).toHaveCount(1)
   await orador.getByRole('button', { name: 'Cubrir' }).click()
   await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Carlos' })
+  await settled()
   await expect(orador).toContainText('pro tempore · titular: Javier')
   // También alguien de fuera, escrito a mano.
   await orador.getByRole('button', { name: 'Cubrir' }).click()
   await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Otra persona (invitado)…' })
   await orador.getByLabel('Nombre de quien cubre Orador').fill('Susana (invitada)')
   await orador.getByRole('button', { name: 'Guardar' }).click()
+  await settled()
   await expect(orador).toContainText('Susana (invitada)')
   await expect(orador).toContainText('Confirmado')
   await shot(page, '13b-oficialidad')
   // Y se devuelve al titular.
   await orador.getByRole('button', { name: 'Cubrir' }).click()
   await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Titular: Javier' })
+  await settled()
   await expect(orador).not.toContainText('pro tempore')
 })
 
@@ -348,6 +354,25 @@ test('avisos: banner al publicarse una tenida y campana', async ({ page, browser
   await expect(page.getByRole('link', { name: /Ya puedes confirmar tu asistencia/ }).first()).toBeVisible()
   await shot(page, '22-avisos')
   await expect(page.getByRole('link', { name: /^Avisos$/ }).first()).toBeAttached()
+})
+
+test('hospitalaria: checklist de contactos en Interno', async ({ page }) => {
+  await login(page, 'Alba')
+  await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
+  await page.goto('/interno')
+  await expect(page.getByText('Hospitalaria · contactos entre tenidas')).toBeVisible()
+  const raquel = page.getByRole('checkbox', { name: /^Raquel:/ })
+  if ((await raquel.getAttribute('aria-checked')) === 'true') {
+    await raquel.click()
+    await expect(page.getByRole('checkbox', { name: 'Raquel: sin contactar' })).toBeVisible()
+  }
+  await page.getByRole('button', { name: 'Nota sobre Raquel' }).click()
+  await page.getByLabel('Texto de la nota sobre Raquel').fill('Está bien, vendrá a la próxima')
+  await page.getByRole('button', { name: 'Marcar como contactado' }).click()
+  await expect(page.getByRole('checkbox', { name: 'Raquel: contactado' })).toBeVisible()
+  await expect(page.getByText('Está bien, vendrá a la próxima')).toBeVisible()
+  await expect(page.getByText(/de \d+ contactados/)).toBeVisible()
+  await shot(page, '23-hospitalaria')
 })
 
 test('perfil: cerrar sesión', async ({ page }) => {
