@@ -12,8 +12,11 @@ import { RichText } from '@/components/ui/RichText'
 import { requireMember } from '@/lib/auth/session'
 import { getTenidaDetail } from '@/lib/data/agenda'
 import { getActiveMembers, getOficialidad } from '@/lib/data/oficialidad'
-import { attendanceIsOpen, longDate } from '@/lib/domain/dates'
-import { displayTitle } from '@/lib/domain/tenidas'
+import { attendanceIsOpen, longDate, todayIso } from '@/lib/domain/dates'
+import { displayTitle, tenidaCalendarEvent } from '@/lib/domain/tenidas'
+import { googleCalendarUrl } from '@/lib/domain/calendar'
+import { buttonClass } from '@/components/ui/Button'
+import { CalendarPlus } from 'lucide-react'
 import { driveViewUrl, formatMoney, lines, safeLink } from '@/lib/domain/text'
 
 export const metadata: Metadata = { title: 'Tenida' }
@@ -65,6 +68,21 @@ export default async function TenidaPage({ params }: PageProps<'/tenidas/[id]'>)
         {member.permisos.gestion && summary ? (
           <DetailSection title="Confirmaciones de la tenida">
             <AttendanceSummary row={summary} />
+          </DetailSection>
+        ) : null}
+
+        {tenida.fecha >= todayIso() ? (
+          <DetailSection title="Calendario">
+            <div className="grid grid-cols-2 gap-2">
+              <a href={`/tenidas/${encodeURIComponent(tenida.id)}/calendario`} className={`${buttonClass('primary')} px-3`} aria-label="Añadir al calendario">
+                <CalendarPlus aria-hidden className="size-[18px]" strokeWidth={1.75} />
+                <span className="whitespace-nowrap">Mi calendario</span>
+              </a>
+              <a href={googleCalendarUrl(tenidaCalendarEvent(tenida))} target="_blank" rel="noopener noreferrer" className={buttonClass('secondary')}>
+                <span className="whitespace-nowrap">Google Calendar</span>
+              </a>
+            </div>
+            <p className="mt-2 text-[12.5px] text-muted">«Mi calendario» sirve para iPhone, Android y Outlook.</p>
           </DetailSection>
         ) : null}
 
