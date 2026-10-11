@@ -55,6 +55,8 @@ export interface Permisos {
   aprobarProposiciones: boolean
   // Pone quién cubre cada puesto de la oficialidad en una tenida.
   oficialidad: boolean
+  // Lista de contactos de la Hospitalaria entre tenida y tenida.
+  hospitalaria: boolean
 }
 
 export function permissionsFor(user: UserLike): Permisos {
@@ -87,6 +89,7 @@ export function permissionsFor(user: UserLike): Permisos {
     administracion: administrador,
     aprobarProposiciones: secretaria || venerable || administrador,
     oficialidad: secretaria || venerable || administrador,
+    hospitalaria: hasCargo(user, 'hospitalari') || administrador,
   }
 }
 
