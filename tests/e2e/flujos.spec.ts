@@ -224,15 +224,22 @@ test('secretaría: cubre un puesto de la oficialidad', async ({ page }) => {
   await login(page, 'Manu')
   await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
   await page.goto('/tenidas/EVT-6026-002')
-  const orador = page.locator('li', { has: page.getByText('Orador', { exact: true }) })
+  const orador = page.locator('li[data-puesto="orador"]')
   await orador.getByRole('button', { name: 'Cubrir' }).click()
   await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Carlos' })
-  await expect(orador).toContainText('en lugar de Javier')
+  await expect(orador).toContainText('pro tempore · titular: Javier')
+  // También alguien de fuera, escrito a mano.
+  await orador.getByRole('button', { name: 'Cubrir' }).click()
+  await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Otra persona (invitado)…' })
+  await orador.getByLabel('Nombre de quien cubre Orador').fill('Susana (invitada)')
+  await orador.getByRole('button', { name: 'Guardar' }).click()
+  await expect(orador).toContainText('Susana (invitada)')
+  await expect(orador).toContainText('Confirmado')
   await shot(page, '13b-oficialidad')
   // Y se devuelve al titular.
   await orador.getByRole('button', { name: 'Cubrir' }).click()
   await orador.getByLabel('Quién cubre Orador').selectOption({ label: 'Titular: Javier' })
-  await expect(orador).not.toContainText('en lugar de')
+  await expect(orador).not.toContainText('pro tempore')
 })
 
 test('venerable: ve el panel de gestión sin marcar asistencia de otros', async ({ page }) => {

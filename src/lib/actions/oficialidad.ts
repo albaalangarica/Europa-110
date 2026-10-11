@@ -6,8 +6,9 @@ import { findTenida } from '@/lib/data/agenda'
 import type { ActionResult } from '@/lib/domain/types'
 import { actionMember, failure, NOT_AUTHENTICATED, success, UNEXPECTED } from './helpers'
 
-// Quién cubre un puesto en una tenida concreta. Vacío = vuelve a ser el titular.
-export async function setCobertura(tenidaId: string, puestoId: string, miembroId: string): Promise<ActionResult> {
+// Quién cubre un puesto en una tenida concreta (pro tempore). Vacío = vuelve a ser el titular.
+// Con invitado, lo cubre alguien de fuera escrito a mano.
+export async function setCobertura(tenidaId: string, puestoId: string, miembroId: string, invitado = ''): Promise<ActionResult> {
   const member = await actionMember()
   if (!member) return NOT_AUTHENTICATED
   if (!member.permisos.oficialidad) return failure('Solo Secretaría, el Venerable o Administración pueden cambiar la oficialidad.')
@@ -17,13 +18,16 @@ export async function setCobertura(tenidaId: string, puestoId: string, miembroId
     const { data: puesto } = await db().from('puestos').select('id, titular_id').eq('id', puestoId).maybeSingle()
     if (!puesto) return failure('Ese puesto no existe.')
 
-    const back = !miembroId || miembroId === puesto.titular_id
+    const guest = invitado.trim().slice(0, 120)
+    const back = !guest && (!miembroId || miembroId === puesto.titular_id)
     const { error } = back
       ? await db().from('puestos_tenida').delete().eq('tenida_id', tenidaId).eq('puesto_id', puestoId)
-      : await db().from('puestos_tenida').upsert({ tenida_id: tenidaId, puesto_id: puestoId, miembro_id: miembroId })
+      : await db()
+          .from('puestos_tenida')
+          .upsert({ tenida_id: tenidaId, puesto_id: puestoId, miembro_id: guest ? null : miembroId, invitado: guest })
     if (error) throw error
     revalidatePath('/', 'layout')
-    return success(back ? 'Vuelve a cubrirlo el titular.' : 'Puesto cubierto.')
+    return success(back ? 'Vuelve a cubrirlo el titular.' : 'Puesto cubierto pro tempore.')
   } catch (error) {
     console.error('[oficialidad]', error)
     return UNEXPECTED

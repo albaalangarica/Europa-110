@@ -172,8 +172,10 @@ export interface PuestoTenida {
   nombre: string
   orden: number
   titular: { id: string; nombre: string } | null
-  persona: { id: string; nombre: string } | null
-  // La persona cubre el puesto solo en esta tenida, en lugar del titular.
-  sustituto: boolean
+  // id null = alguien de fuera escrito a mano (invitado).
+  persona: { id: string | null; nombre: string } | null
+  // Ocupa el puesto pro tempore: solo en esta tenida, en lugar del titular.
+  proTempore: boolean
+  invitado: boolean
   estado: 'confirmado' | 'pendiente' | 'por-cubrir'
 }
