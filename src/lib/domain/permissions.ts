@@ -53,6 +53,8 @@ export interface Permisos {
   administracion: boolean
   // Aprueba lo que se deja en el Saco de proposiciones: Secretaría, Venerable y Administración.
   aprobarProposiciones: boolean
+  // Pone quién cubre cada puesto de la oficialidad en una tenida.
+  oficialidad: boolean
 }
 
 export function permissionsFor(user: UserLike): Permisos {
@@ -84,6 +86,7 @@ export function permissionsFor(user: UserLike): Permisos {
     formacion: { publicar, ver },
     administracion: administrador,
     aprobarProposiciones: secretaria || venerable || administrador,
+    oficialidad: secretaria || venerable || administrador,
   }
 }
 

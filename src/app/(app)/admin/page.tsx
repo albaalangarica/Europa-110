@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { CalendarDays, FileText, GraduationCap, Landmark, ScrollText, UserPlus, Users } from 'lucide-react'
+import { Award, CalendarDays, FileText, GraduationCap, Landmark, ScrollText, UserPlus, Users } from 'lucide-react'
 import { AppHeader, Page } from '@/components/layout/AppHeader'
 import { CardLink } from '@/components/ui/Card'
 import { requireMember } from '@/lib/auth/session'
@@ -13,6 +13,7 @@ const SECTIONS = [
   { href: '/admin/planchas', table: 'planchas', label: 'Planchas', text: 'Trabajos, autores y tenida de lectura', Icon: ScrollText },
   { href: '/admin/documentos', table: 'documentos', label: 'Documentos', text: 'Actas, reglamentos y circulares', Icon: FileText },
   { href: '/admin/formaciones', table: 'formaciones', label: 'Formaciones', text: 'Lo publicado por los Vigilantes', Icon: GraduationCap },
+  { href: '/admin/oficialidad', table: 'puestos', label: 'Oficialidad', text: 'Titulares de cada puesto en las tenidas', Icon: Award },
   { href: '/admin/miembros', table: 'miembros', label: 'Miembros', text: 'Usuarios, grados, cargos y contraseñas', Icon: Users },
   { href: '/admin/invitados', table: 'invitados', label: 'Invitados', text: 'Inscripciones de visitantes', Icon: UserPlus },
 ]
