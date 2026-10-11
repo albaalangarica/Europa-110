@@ -63,7 +63,7 @@ test('aprendiz: agenda, confirmar asistencia, planchas, interno y su panel', asy
   // Oficialidad en el orden de los puestos, con su estado; una aprendiz no puede cambiarla.
   const puestos = page.locator('ol li', { has: page.getByText('Venerable Maestro') }).first()
   await expect(puestos).toContainText('Fernando')
-  await expect(page.getByText(/de 10 confirmados/)).toBeVisible()
+  await expect(page.getByText(/de 8 confirmados/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Cubrir' })).toHaveCount(0)
   // Una aprendiz no ve las confirmaciones ni registra el Tronco.
   await expect(page.getByText('Confirmaciones de la tenida')).toHaveCount(0)

@@ -28,8 +28,6 @@ from (values
   ('segundo-vigilante', 'Segundo Vigilante', 3, 'Álvaro'),
   ('orador', 'Orador', 4, 'Javier'),
   ('secretario', 'Secretario', 5, 'Manu'),
-  ('guardasellos', 'Guardasellos', 6, 'Manu'),
-  ('tesorero', 'Tesorera', 7, 'Maria Luisa'),
   ('experto', 'Experto', 8, 'Eric'),
   ('maestro-ceremonias', 'Maestra de Ceremonias', 9, 'Alba'),
   ('armonia', 'Armonía', 10, 'Álvaro')
