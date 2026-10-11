@@ -42,16 +42,29 @@ export async function getOficialidad(tenidaIds: string[]): Promise<Map<string, P
   const answers = new Map(
     (asistencia.data as { tenida_id: string; miembro_id: string; respuesta: Respuesta }[]).map((r) => [`${r.tenida_id}|${r.miembro_id}`, r.respuesta]),
   )
-  const covers = new Map(
-    ((coberturas.data ?? []) as { tenida_id: string; puesto_id: string; miembro_id: string }[]).map((c) => [`${c.tenida_id}|${c.puesto_id}`, c.miembro_id]),
-  )
+  type Cover = { tenida_id: string; puesto_id: string; miembro_id: string | null; invitado?: string }
+  const covers = new Map(((coberturas.data ?? []) as Cover[]).map((c) => [`${c.tenida_id}|${c.puesto_id}`, c]))
 
   for (const tenidaId of tenidaIds) {
     result.set(
       tenidaId,
       puestos.map((p) => {
-        const cover = covers.get(`${tenidaId}|${p.id}`) ?? null
-        const persona = person(cover ?? p.titular_id)
+        const cover = covers.get(`${tenidaId}|${p.id}`)
+        const guest = cover?.invitado?.trim() ?? ''
+        // Un invitado lo pone Secretaría sabiendo que viene: cuenta como confirmado.
+        if (guest) {
+          return {
+            id: p.id,
+            nombre: p.nombre,
+            orden: p.orden,
+            titular: person(p.titular_id),
+            persona: { id: null, nombre: guest },
+            proTempore: true,
+            invitado: true,
+            estado: 'confirmado',
+          }
+        }
+        const persona = person(cover?.miembro_id ?? p.titular_id)
         const answer = persona ? answers.get(`${tenidaId}|${persona.id}`) : undefined
         return {
           id: p.id,
@@ -59,7 +72,8 @@ export async function getOficialidad(tenidaIds: string[]): Promise<Map<string, P
           orden: p.orden,
           titular: person(p.titular_id),
           persona,
-          sustituto: Boolean(cover && cover !== p.titular_id),
+          proTempore: Boolean(cover?.miembro_id && cover.miembro_id !== p.titular_id),
+          invitado: false,
           estado: !persona || answer === 'No' ? 'por-cubrir' : answer === 'Sí' ? 'confirmado' : 'pendiente',
         }
       }),
